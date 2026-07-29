@@ -21,10 +21,16 @@ import { useApp } from '../../state/AppContext'
 import { SpineStrip } from '../plan/SpineStrip'
 import { DeepenPanel } from './DeepenPanel'
 import { ViewSection } from './ViewSection'
+import { useViewBuildSequence } from './useViewBuildSequence'
 
 export function InsightView() {
   const { state, dispatch } = useApp()
   const { view, shapeName } = useComposition()
+
+  // Called unconditionally; a section count of 0 (the plan-deep placeholder) makes it
+  // inert. The count comes straight from the compose layer, so every view assembles
+  // the same way.
+  useViewBuildSequence(view?.sections.length ?? 0)
 
   if (!view) {
     return (
@@ -81,15 +87,17 @@ export function InsightView() {
           </div>
 
           {view.spine.length > 0 && (
-            <div className="view__spine">
+            <div className={`view__spine${state.viewStep < 0 ? ' view__spine--pending' : ''}`}>
               <SpineStrip nodes={view.spine} />
             </div>
           )}
 
-          {view.sections.map((section) => (
+          {view.sections.map((section, index) => (
             <ViewSection
               key={section.id}
               section={section}
+              // Walk order: a section is up once the sequence has reached its index.
+              revealed={index < state.viewStep}
               selected={state.deepenScope === section.id}
               onSelect={() => dispatch({ type: 'OPEN_DEEPEN', scope: section.id })}
             />

@@ -11,6 +11,7 @@
 // step can't be wrong and can't go stale when the fixture changes.
 // ---------------------------------------------------------------------------
 
+import type { CSSProperties } from 'react'
 import type { FunnelData } from '../../compose/viewModels'
 
 const W = 720
@@ -64,7 +65,12 @@ export function Funnel({ data }: { data: FunnelData }) {
         const tone = row.isWorst ? 'worst' : row.isLast ? 'final' : 'step'
 
         return (
-          <g key={row.label} className={`funnel__row funnel__row--${tone}`}>
+          <g
+            key={row.label}
+            className={`funnel__row funnel__row--${tone}`}
+            // Row index, for the staggered entrance in view.css. Presentation only.
+            style={{ '--i': index } as CSSProperties}
+          >
             <text className="funnel__label" x={0} y={y + 18}>
               {row.label}
             </text>

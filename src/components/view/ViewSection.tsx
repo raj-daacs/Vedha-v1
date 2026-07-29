@@ -21,11 +21,13 @@ import { Panel } from '../atoms/Panel'
 
 interface Props {
   section: ViewSectionModel
+  /** Has the assembly sequence reached this section yet? */
+  revealed: boolean
   selected: boolean
   onSelect: () => void
 }
 
-export function ViewSection({ section, selected, onSelect }: Props) {
+export function ViewSection({ section, revealed, selected, onSelect }: Props) {
   const { beatView } = section
   const split = beatView.panels.length > 1
 
@@ -39,6 +41,9 @@ export function ViewSection({ section, selected, onSelect }: Props) {
   const classes = [
     'vsection',
     'vsection--selectable',
+    // `--revealed` is also what triggers the charts' entrance, so it has to be a real
+    // class rather than just the absence of `--pending`.
+    revealed ? 'vsection--revealed' : 'vsection--pending',
     selected ? 'vsection--selected' : '',
     section.promoted ? 'vsection--promoted' : '',
   ]
@@ -49,7 +54,10 @@ export function ViewSection({ section, selected, onSelect }: Props) {
     <section
       className={classes}
       role="button"
-      tabIndex={0}
+      // A section that hasn't arrived yet is neither clickable (pointer-events, in
+      // CSS) nor tabbable nor announced — an invisible card shouldn't be reachable.
+      tabIndex={revealed ? 0 : -1}
+      aria-hidden={revealed ? undefined : true}
       aria-pressed={selected}
       onClick={onSelect}
       onKeyDown={handleKeyDown}

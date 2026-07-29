@@ -8,22 +8,8 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect } from 'react'
+import { BUILD_STEP_MS, prefersReducedMotion } from '../motion'
 import { useApp } from '../../state/AppContext'
-
-/** 720ms — the low-fi's interval. Slow enough to read, quick enough not to stall. */
-const STEP_MS = 720
-
-/**
- * Read once per call rather than subscribed: the build sequence is short, and a
- * user toggling the OS setting mid-animation isn't a case worth the listener.
- */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-}
 
 /**
  * Advance the build while one is running.
@@ -49,7 +35,7 @@ export function useBuildSequence(stepCount: number) {
 
     const interval = setInterval(() => {
       dispatch({ type: 'BUILD_ADVANCE', stepCount })
-    }, STEP_MS)
+    }, BUILD_STEP_MS)
 
     return () => clearInterval(interval)
   }, [recipeId, planRevealed, stepCount, dispatch])

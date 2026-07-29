@@ -11,6 +11,7 @@
 // reads without consulting the axis.
 // ---------------------------------------------------------------------------
 
+import type { CSSProperties } from 'react'
 import type { NrrCurveData } from '../../compose/viewModels'
 import { edgeLabels, formatValue, horizontalPositions, verticalScale } from './svgScale'
 
@@ -74,6 +75,9 @@ export function NrrCurve({ data }: { data: NrrCurveData }) {
         <line
           key={index}
           className={`nrr__segment nrr__segment--${segment.below ? 'below' : 'above'}`}
+          // Segment index, so the entrance in view.css traces left to right rather
+          // than lighting every segment at once. Presentation only.
+          style={{ '--i': index } as CSSProperties}
           x1={segment.x1}
           y1={segment.y1}
           x2={segment.x2}
@@ -85,6 +89,7 @@ export function NrrCurve({ data }: { data: NrrCurveData }) {
         <circle
           key={point.label}
           className={`nrr__dot nrr__dot--${point.value < data.baseline.value ? 'below' : 'above'}`}
+          style={{ '--i': index } as CSSProperties}
           cx={xs[index]}
           cy={ys[index]}
           r={index === last ? 4.5 : 2.6}

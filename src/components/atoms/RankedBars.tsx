@@ -11,6 +11,7 @@
 // problem", and rank is what answers it.
 // ---------------------------------------------------------------------------
 
+import type { CSSProperties } from 'react'
 import type { RankedBarsData } from '../../compose/viewModels'
 import { formatValue, mean } from './svgScale'
 
@@ -50,7 +51,12 @@ export function RankedBars({ data }: { data: RankedBarsData }) {
         const tone =
           bar.value === worstValue ? 'worst' : bar.value === bestValue ? 'best' : 'mid'
         return (
-          <g key={bar.label} className={`ranked__row ranked__row--${tone}`}>
+          <g
+            key={bar.label}
+            className={`ranked__row ranked__row--${tone}`}
+            // Row index, for the staggered entrance in view.css. Presentation only.
+            style={{ '--i': index } as CSSProperties}
+          >
             <text className="ranked__label" x={0} y={y + 18}>
               {bar.label}
             </text>

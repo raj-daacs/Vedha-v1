@@ -142,6 +142,7 @@
 
 .view__spine {
   margin-bottom: 22px;
+  transition: opacity 0.28s ease, transform 0.28s ease;
 }
 
 .view__footer {
@@ -161,7 +162,36 @@
   padding: 24px;
   margin-bottom: 22px;
   box-shadow: var(--shadow-card);
-  transition: border-color 0.18s, box-shadow 0.18s;
+  transition: border-color 0.18s, box-shadow 0.18s, opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+/* ---- Assembly: the view composing itself ------------------------------------
+   ONLY opacity and transform. Pending sections stay IN FLOW at opacity 0, so the
+   document's height is final from the first frame — no reflow, no scroll jump, and
+   the rigid content column is never involved. Nothing here animates width, height,
+   padding, margin, display, visibility, flex or grid.
+
+   The base styles are the FINAL state; these rules only describe the entrance. That
+   way the global prefers-reduced-motion block (which flattens all durations) can
+   never strand something mid-animation — and reduced motion also skips the sequence
+   in JS, so every section is revealed on the first render.
+   --------------------------------------------------------------------------- */
+
+.vsection--pending,
+.view__spine--pending {
+  opacity: 0;
+  /* A transform, so it cannot shift anything around it. */
+  transform: translateY(8px);
+}
+
+.vsection--pending {
+  /* Invisible cards must not be clickable. Not a layout property. */
+  pointer-events: none;
+}
+
+.view__spine--pending {
+  transform: translateY(6px);
 }
 
 /* Selectable: every section is a way in to a deeper pass on that question. */
@@ -843,6 +873,90 @@
   flex: none;
   border-radius: 50%;
   background: var(--info);
+}
+
+/* ---- Chart entrances -------------------------------------------------------
+   Deliberately partial: the line charts draw and the bars grow, because those are
+   the shapes whose *direction* is the reading. The cohort matrix (100+ cells) and
+   the scorecard tiles get nothing — animating them would be noise, and "do not
+   animate every atom" is the rule.
+
+   All of it is keyed off `--revealed`, so it costs no JS and cannot delay the next
+   section: the stagger timer runs independently of whether a chart is still drawing.
+
+   `stroke-dashoffset` is a PAINT property on a stroke inside a fixed viewBox. It has
+   no more layout effect than a colour change. Bars use transform: scaleX — never
+   width, per the layout invariant.
+   --------------------------------------------------------------------------- */
+
+@keyframes vdraw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes vgrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes vappear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Trend · StickinessTrend — the line traces in. */
+.vsection--revealed .chart__line {
+  stroke-dasharray: 1200;
+  animation: vdraw 520ms ease-out forwards;
+}
+
+/* The area under it just fades — drawing both would read as two events. */
+.vsection--revealed .chart__area {
+  animation: vappear 420ms ease-out 140ms both;
+}
+
+/* NrrCurve — drawn as separate segments, so they trace in sequence. `--i` is the
+   segment index, set by the atom; the delay is what makes it read as one stroke. */
+.vsection--revealed .nrr__segment {
+  stroke-dasharray: 1200;
+  animation: vdraw 200ms linear forwards;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+.vsection--revealed .nrr__dot {
+  animation: vappear 160ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 26ms + 120ms);
+}
+
+/* Funnel · RankedBars — bars grow from their left edge. `transform-box: fill-box`
+   makes transform-origin relative to the bar itself rather than the viewBox. */
+.vsection--revealed .funnel__bar,
+.vsection--revealed .ranked__bar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: vgrow 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 34ms);
+}
+
+/* Their numbers arrive once the bar has somewhere to sit. */
+.vsection--revealed .funnel__reach,
+.vsection--revealed .funnel__pass,
+.vsection--revealed .ranked__value,
+.vsection--revealed .ranked__note {
+  animation: vappear 240ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 34ms + 200ms);
 }
 
 /* The answer in words. A different kind of statement from the chart, hence the rule. */

@@ -195,6 +195,13 @@ becomes a pushing flex sibling above `1460px`, where there's demonstrably room f
 | 1600px | push (`static`) | **820px** | **820px** (recentres, left 508 → 308) |
 | 1100px | overlay (`absolute`) | **820px** | **820px** (container stays 864px) |
 
+**The same rule governs the view's assembly animation.** Pending sections stay *in
+flow* at `opacity: 0` with a `translateY`, so document height is final from the first
+frame — measured constant at `scrollHeight 1875` and `.view` at `820px` across every
+frame of the sequence. Only `opacity`, `transform` and (on strokes)
+`stroke-dashoffset` animate. **Bars grow with `transform: scaleX`, never `width`.** The
+one rule in the codebase that transitions `width` is `.deepen` itself, by design.
+
 ---
 
 ## The loop, end to end
@@ -210,7 +217,11 @@ becomes a pushing flex sibling above `1460px`, where there's demonstrably room f
    intent + context chips, the scope panel derived from the recipe, and the beats.
    Spine-first for a flow; spineless and collapsed for a state.
 4. **Insight View.** The built artifact — it *persists* in the stage; there is no chat
-   thread beneath it.
+   thread beneath it. It **assembles**: the spine lays down, then each section arrives
+   in walk order 140ms apart, with the line charts tracing and the bars growing from
+   their baseline. Driven by `useViewBuildSequence` off a `viewStep` counter, so it
+   replays on "Build view" and after an Edit-A re-plan, and it is family-blind — the
+   hook only ever sees a section count.
 5. **Deepen.** Selecting any section opens a right-side panel scoped to that question;
    **Ask about this view** opens it at whole-view scope. Answers are **ephemeral** until
    **＋ Add to view** promotes one onto the view as a section.

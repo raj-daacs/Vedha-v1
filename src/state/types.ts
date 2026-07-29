@@ -72,6 +72,17 @@ export interface AppState {
   promoted: string[]
 
   /**
+   * How much of the Insight View has assembled: -1 not on the view, 0 the spine has
+   * laid down, k the spine plus the first k sections. Section `i` is revealed when
+   * `i < viewStep`.
+   *
+   * Completion is DERIVED (`viewStep >= sectionCount`) rather than stored, which is
+   * what makes a promoted follow-up animate in for free: promoting grows the section
+   * count, so the sequence has one more section to reveal and nothing else changes.
+   */
+  viewStep: number
+
+  /**
    * EDIT A — the intent/scope modal is open. Coarse edits (revise the ask, change
    * workspace or period) that may re-select the recipe and re-compose everything.
    */
@@ -124,6 +135,10 @@ export type Action =
   | { type: 'EDIT_INTENT' }
   /** "Build view" — leaves the plan for the rendered view (or its placeholder). */
   | { type: 'OPEN_VIEW' }
+  /** One tick of the view assembling — reveal the next section. */
+  | { type: 'VIEW_ADVANCE'; sectionCount: number }
+  /** Skip straight to a fully assembled view — reduced motion. */
+  | { type: 'VIEW_COMPLETE'; sectionCount: number }
   /** Selecting a section, or "Ask about this view" (`scope: 'root'`). */
   | { type: 'OPEN_DEEPEN'; scope: string }
   | { type: 'CLOSE_DEEPEN' }

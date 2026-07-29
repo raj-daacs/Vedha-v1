@@ -30,13 +30,17 @@ export const initialState: AppState = {
   unrecognised: null,
   deepenScope: null,
   promoted: [],
+  viewStep: -1,
   editA: false,
   editBeat: null,
   beatReads: {},
 }
 
-/** A fresh view: nothing selected, nothing promoted yet. */
-const CLEAN_VIEW = { deepenScope: null, promoted: [] as string[] }
+/**
+ * A fresh view: nothing selected, nothing promoted, and the assembly sequence armed
+ * (not running — it starts when the operator actually opens the view).
+ */
+const CLEAN_VIEW = { deepenScope: null, promoted: [] as string[], viewStep: -1 }
 
 /**
  * A fresh plan. Beat overrides are dropped on any re-plan on purpose: a re-selected
@@ -151,7 +155,15 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'OPEN_VIEW':
       // Promotions persist — they're part of the artifact now. Only the panel closes.
-      return { ...state, screen: 'view', deepenScope: null }
+      // `viewStep: 0` starts the assembly from the spine, so "Build view" always
+      // plays the sequence — including after an Edit-A re-plan.
+      return { ...state, screen: 'view', deepenScope: null, viewStep: 0 }
+
+    case 'VIEW_ADVANCE':
+      return { ...state, viewStep: Math.min(state.viewStep + 1, action.sectionCount) }
+
+    case 'VIEW_COMPLETE':
+      return { ...state, viewStep: action.sectionCount }
 
     case 'OPEN_DEEPEN':
       return { ...state, deepenScope: action.scope }
