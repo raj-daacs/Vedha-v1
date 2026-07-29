@@ -75,5 +75,11 @@ textarea {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    /* DELAYS MUST GO TOO. Flattening only the duration would leave a staged entrance
+       invisible for the length of its delay and then pop — which is worse than the
+       animation it was meant to remove. The view's section cascade delays some
+       elements by half a second. */
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
   }
 }

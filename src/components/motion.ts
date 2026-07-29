@@ -24,8 +24,18 @@ export function prefersReducedMotion(): boolean {
 export const BUILD_STEP_MS = 720
 
 /**
- * The Insight View's section stagger. Much quicker than a build step: the build is
- * something you read, whereas this is the view arriving — it should feel composed,
- * not narrated. Four sections land in well under a second.
+ * The Insight View's section stagger.
+ *
+ * Tuned by feel, and the first attempt (140ms) was wrong: it read as a fade-in rather
+ * than as the agent composing. The section has to land, fill in, and reach its
+ * conclusion before the next one starts, or the whole thing is one blur.
+ *
+ * At 440ms a three-section view settles in roughly 2s end to end, including each
+ * section's internal cascade. 520 was measurably too slow — it pushed the last
+ * takeaway past 2.5s, which reads as waiting rather than watching. Much under 400 and
+ * the cascade inside each section has no room to be seen.
+ *
+ * Each section overlaps the next slightly on purpose: fully sequential would be
+ * stop-start, and the overlap is what makes it read as continuous composition.
  */
-export const VIEW_STAGGER_MS = 140
+export const VIEW_STAGGER_MS = 440

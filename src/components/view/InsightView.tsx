@@ -27,10 +27,20 @@ export function InsightView() {
   const { state, dispatch } = useApp()
   const { view, shapeName } = useComposition()
 
-  // Called unconditionally; a section count of 0 (the plan-deep placeholder) makes it
+  /**
+   * The spine takes the first beat of the sequence — when there is one to lay down.
+   * A shape that declares no spine has nothing to show on that beat, so its first
+   * section leads instead and the view never opens on an empty pause.
+   *
+   * Derived from the model's spine, exactly like the strip below it. Not a family
+   * check: any spineless shape behaves this way.
+   */
+  const revealOffset = (view?.spine.length ?? 0) > 0 ? 0 : 1
+
+  // Called unconditionally; a beat count of 0 (the plan-deep placeholder) makes it
   // inert. The count comes straight from the compose layer, so every view assembles
   // the same way.
-  useViewBuildSequence(view?.sections.length ?? 0)
+  useViewBuildSequence(Math.max((view?.sections.length ?? 0) - revealOffset, 0))
 
   if (!view) {
     return (
@@ -97,7 +107,7 @@ export function InsightView() {
               key={section.id}
               section={section}
               // Walk order: a section is up once the sequence has reached its index.
-              revealed={index < state.viewStep}
+              revealed={index < state.viewStep + revealOffset}
               selected={state.deepenScope === section.id}
               onSelect={() => dispatch({ type: 'OPEN_DEEPEN', scope: section.id })}
             />

@@ -217,11 +217,19 @@ one rule in the codebase that transitions `width` is `.deepen` itself, by design
    intent + context chips, the scope panel derived from the recipe, and the beats.
    Spine-first for a flow; spineless and collapsed for a state.
 4. **Insight View.** The built artifact — it *persists* in the stage; there is no chat
-   thread beneath it. It **assembles**: the spine lays down, then each section arrives
-   in walk order 140ms apart, with the line charts tracing and the bars growing from
-   their baseline. Driven by `useViewBuildSequence` off a `viewStep` counter, so it
-   replays on "Build view" and after an Edit-A re-plan, and it is family-blind — the
-   hook only ever sees a section count.
+   thread beneath it.
+
+   It **assembles, as if being written**. The spine lays down, then each section
+   arrives in walk order ~440ms apart (`VIEW_STAGGER_MS`) — and each section composes
+   *internally*: heading → what it measures → the number → the chart drawing → and the
+   **takeaway last**, after the evidence it's drawn from. A three-section view settles
+   in about 2.3s. Timings live in `motion.ts` and the cascade delays in `view.css`;
+   `VIEW_STAGGER_MS` is the one knob for overall pace.
+
+   Driven by `useViewBuildSequence` off a `viewStep` counter, so it replays on "Build
+   view" and after an Edit-A re-plan. Family-blind — the hook only ever sees a beat
+   count. A shape with no spine skips the spine's beat (`revealOffset`) so it never
+   opens on a pause with nothing to show.
 5. **Deepen.** Selecting any section opens a right-side panel scoped to that question;
    **Ask about this view** opens it at whole-view scope. Answers are **ephemeral** until
    **＋ Add to view** promotes one onto the view as a section.
