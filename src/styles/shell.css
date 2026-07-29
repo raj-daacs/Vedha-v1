@@ -1,0 +1,223 @@
+/* ---------------------------------------------------------------------------
+   shell.css — the permanent frame: the left rail and the stage it wraps.
+   Values from `Vedha Core Loop.dc.html` (the <nav> and the MAIN wrapper).
+   --------------------------------------------------------------------------- */
+
+.shell {
+  display: flex;
+  height: 100vh;
+  min-height: var(--app-min-h);
+  overflow: hidden;
+  background: var(--cream);
+}
+
+/* ---- The rail ----------------------------------------------------------- */
+
+.rail {
+  width: var(--rail-w);
+  flex: none;
+  background: var(--paper);
+  border-right: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+}
+
+.rail__wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  color: var(--teal-deep);
+  margin: 2px 6px 30px;
+}
+
+.rail__mark {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: conic-gradient(var(--teal-deep) 0 50%, transparent 50% 100%);
+  border: 1.5px solid var(--teal-deep);
+}
+
+.rail__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r);
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s;
+}
+
+/* Hover isn't specified in the source — the lightest wash that reads as
+   interactive without introducing a new colour. */
+.rail__item:hover {
+  background: rgba(31, 30, 28, 0.035);
+}
+
+.rail__item[aria-current='page'] {
+  background: var(--teal-tint);
+  color: var(--teal-deep);
+  font-weight: 600;
+}
+
+.rail__item:focus-visible,
+.rail__saved-item:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 1px;
+}
+
+.rail__spacer {
+  flex: 1;
+}
+
+.rail__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 10px 8px;
+}
+
+.rail__saved {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.rail__saved-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color 0.14s;
+}
+
+.rail__saved-item:hover {
+  background: rgba(31, 30, 28, 0.035);
+}
+
+.rail__you {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px 2px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+.rail__avatar {
+  width: 27px;
+  height: 27px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--avatar);
+}
+
+/* ---- The context label -------------------------------------------------- */
+
+/* Shell part two. Sits above the stage on every screen but the front door. */
+.ctxbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 30px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--translucent);
+  backdrop-filter: blur(6px);
+}
+
+.ctxbar__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ctxbar__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.ctxbar__caret {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.ctxbar__pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- The stage ---------------------------------------------------------- */
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.stage__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* Rail destinations that don't exist yet. Says so plainly rather than
+   pretending — deleted as each surface lands. */
+.stage__placeholder {
+  margin: auto;
+  text-align: center;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 2;
+}
+
+.stage__placeholder-action {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.stage__placeholder strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-muted);
+  font-weight: 400;
+}

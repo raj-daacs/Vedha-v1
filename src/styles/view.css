@@ -1,0 +1,856 @@
+/* ---------------------------------------------------------------------------
+   view.css — the Insight View and its atoms.
+
+   Fidelity target: `vedha_insight_view_activation.html`. As in plan.css, every
+   accent goes through the --accent* aliases, so one set of rules serves both report
+   families — the stage sets data-family and tokens.css repoints the aliases.
+   --------------------------------------------------------------------------- */
+
+/* ---- Layout: the rigid column and the panel beside it ------------------- */
+
+/*
+   THE HARD INVARIANT (brief §5.2, and a bug fixed twice before).
+   The content column's rendered width must be IDENTICAL with the panel open and
+   closed. Opening it may reposition the column; it must never resize, reflow or
+   deform it.
+
+   The mechanism, and why it can't fail: `.deepen` is a FLEX SIBLING of the scroll
+   container, so it can only ever change how much room the container has. `.view`
+   takes its width from a token, not from that room, and recentres with auto
+   margins. There is no path by which panel state reaches the column's width.
+
+   Never give `.view` width:100%, max-width, flex-grow, or a percentage. An elastic
+   column plus a pushing panel is exactly what mangled the cards before.
+*/
+
+.view-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+/* The only elastic box in here. */
+.view-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  /* Safety valve: if a window is ever narrower than the rigid column, scroll it
+     rather than clip it. */
+  overflow-x: auto;
+}
+
+.view {
+  /* RIGID. See the note above before changing this. */
+  width: var(--view-col);
+  margin: 0 auto;
+  padding: 28px 28px 70px;
+}
+
+/* ---- Header ------------------------------------------------------------- */
+
+.view__header {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 16px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.view__title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 400;
+  margin: 0;
+}
+
+.view__subtitle {
+  color: var(--ink-muted);
+  font-size: 14px;
+  padding-bottom: 3px;
+}
+
+.view__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+
+.view__action {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  background: var(--white);
+  color: var(--ink-muted);
+}
+
+/* The one live control up here — the whole-view way into the deepen panel. */
+.view__action--ask {
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+}
+
+.view__action--ask:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.view__action--active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+
+.view__action--ask:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.view__cue {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-ink);
+}
+
+.view__meta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 0 24px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+/* Honest, and therefore prominent. */
+.view__confidence {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border-radius: var(--r-xs);
+  padding: 3px 9px;
+}
+
+.view__spine {
+  margin-bottom: 22px;
+}
+
+.view__footer {
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* ---- Section card ------------------------------------------------------- */
+
+.vsection {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+/* Selectable: every section is a way in to a deeper pass on that question. */
+.vsection--selectable {
+  cursor: pointer;
+}
+
+.vsection--selectable:hover {
+  border-color: var(--accent);
+}
+
+.vsection--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.vsection--selectable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Promoted from a follow-up — part of the view now, but says where it came from. */
+.vsection--promoted {
+  border-left: 3px solid var(--accent);
+}
+
+.vsection__origin {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin-bottom: 8px;
+}
+
+.vsection__cue {
+  float: right;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.vsection__category {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.vsection__question {
+  font-family: var(--font-ui);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 4px 0 2px;
+}
+
+.vsection__subtitle {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* ---- Headline ----------------------------------------------------------- */
+
+.vsection__headline {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 16px 0 4px;
+}
+
+.vsection__headline-value {
+  font-family: var(--font-ui);
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+
+.vsection__headline-note {
+  color: var(--ink-muted);
+  font-size: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vsection__headline-delta {
+  font-weight: 600;
+}
+
+.vsection__headline-delta--bad {
+  color: var(--coral);
+}
+
+.vsection__headline-delta--good {
+  color: var(--accent-deep);
+}
+
+/* ---- Panels ------------------------------------------------------------- */
+
+.vsection__panels {
+  margin-top: 18px;
+}
+
+/* Two panels share the row; one runs full width. Layout from count, not family.
+   No viewport media query here on purpose: the column is rigid, so the inner width
+   is constant and viewport-driven reflow inside a card would only reintroduce the
+   deformation the rigid column exists to prevent. */
+.vsection__panels--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 26px;
+  align-items: start;
+}
+
+.panel__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart text {
+  font-family: var(--font-body);
+}
+
+.chart__grid line {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.chart__tick text {
+  font-size: 10px;
+  fill: var(--ink-faint);
+}
+
+/* A target you're under is news. */
+.chart__target {
+  stroke: var(--coral);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+}
+
+.chart__target-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--coral);
+}
+
+/* A benchmark is a floor, not a goal — so it stays neutral. */
+.chart__benchmark,
+.chart__baseline {
+  stroke: var(--ink-faint);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+}
+
+.chart__benchmark-label,
+.chart__baseline-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-faint);
+}
+
+.chart__area {
+  fill: var(--accent-tint);
+  opacity: 0.6;
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--accent-deep);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.chart__line--state {
+  stroke: var(--accent);
+  stroke-width: 2.6;
+}
+
+.chart__dot {
+  fill: var(--accent-deep);
+}
+
+.chart__dot--state {
+  fill: var(--accent);
+}
+
+/* ---- Funnel ------------------------------------------------------------- */
+
+.funnel__label {
+  font-size: 12.5px;
+  fill: var(--ink);
+}
+
+.funnel__bar {
+  fill: var(--accent-tint);
+  stroke: var(--accent);
+  stroke-opacity: 0.3;
+}
+
+.funnel__reach {
+  font-size: 12.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.funnel__pass {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--ink-muted);
+}
+
+.funnel__rule {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+/* The leak. Named in coral so it reads before the numbers do. */
+.funnel__row--worst .funnel__label {
+  fill: var(--coral);
+  font-weight: 600;
+}
+
+.funnel__row--worst .funnel__bar {
+  fill: var(--coral-tint);
+  stroke: var(--coral);
+  stroke-opacity: 0.55;
+}
+
+.funnel__row--worst .funnel__reach {
+  fill: var(--coral);
+}
+
+.funnel__row--worst .funnel__pass {
+  fill: var(--coral);
+  font-weight: 700;
+}
+
+/* The destination. */
+.funnel__row--final .funnel__label {
+  font-weight: 600;
+}
+
+.funnel__row--final .funnel__bar {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.funnel__row--final .funnel__reach {
+  fill: var(--accent-deep);
+  font-weight: 700;
+}
+
+/* ---- Ranked bars -------------------------------------------------------- */
+
+.ranked__avg {
+  stroke: var(--ink-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.ranked__avg-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--ink-faint);
+}
+
+.ranked__label {
+  font-size: 13px;
+  fill: var(--ink);
+}
+
+.ranked__value {
+  font-size: 12.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.ranked__note {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  fill: var(--coral);
+}
+
+.ranked__row--best .ranked__bar {
+  fill: var(--accent);
+}
+
+.ranked__row--mid .ranked__bar {
+  fill: var(--teal-mid);
+}
+
+.ranked__row--worst .ranked__bar {
+  fill: var(--coral);
+}
+
+.ranked__row--worst .ranked__label {
+  fill: var(--coral);
+  font-weight: 600;
+}
+
+.ranked__row--worst .ranked__value {
+  fill: var(--coral);
+  font-weight: 700;
+}
+
+/* ---- NRR curve ---------------------------------------------------------- */
+
+.nrr__segment {
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.nrr__segment--below {
+  stroke: var(--coral);
+}
+
+.nrr__segment--above {
+  stroke: var(--accent);
+}
+
+.nrr__dot--below {
+  fill: var(--coral);
+}
+
+.nrr__dot--above {
+  fill: var(--accent);
+}
+
+.nrr__annotation {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-muted);
+}
+
+/* ---- Scorecard ---------------------------------------------------------- */
+
+.scorecard__group + .scorecard__group {
+  margin-top: 18px;
+}
+
+.scorecard__tiles {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tile {
+  flex: 1;
+  min-width: 150px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  background: var(--white);
+}
+
+/* The ratio carries the judgement, so it carries the accent. */
+.tile--accent {
+  border-color: var(--accent);
+}
+
+.tile__value {
+  font-family: var(--font-ui);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.tile--accent .tile__value {
+  color: var(--accent-ink);
+}
+
+.tile__label {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.tile__delta--up {
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.tile__delta--down {
+  color: var(--coral);
+  font-weight: 600;
+}
+
+.tile__bench--clears {
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.tile__bench--misses {
+  color: var(--coral);
+  font-weight: 600;
+}
+
+/* ---- Cohort matrix ------------------------------------------------------ */
+
+.matrix__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.matrix__col,
+.matrix__row,
+.matrix__axis {
+  font-family: var(--font-mono);
+  fill: var(--ink-faint);
+}
+
+.matrix__col {
+  font-size: 9px;
+}
+
+.matrix__row {
+  font-size: 9px;
+  fill: var(--ink-muted);
+}
+
+.matrix__axis {
+  font-size: 8.5px;
+}
+
+.matrix__value {
+  font-family: var(--font-body);
+  font-size: 8.5px;
+}
+
+/* Not observed yet. The empty triangle is the information. */
+.matrix__cell--unobserved {
+  fill: none;
+  stroke: var(--hairline);
+  stroke-dasharray: 2 2;
+}
+
+.matrix__legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.matrix__legend-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.matrix__legend-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.matrix__swatch {
+  display: inline-block;
+  width: 15px;
+  height: 11px;
+  border-radius: 2px;
+}
+
+.matrix__swatch--unobserved {
+  background: var(--white);
+  border: 1px dashed var(--hairline);
+}
+
+/* ---- Section legend + takeaway ----------------------------------------- */
+
+.vsection__legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-top: 12px;
+}
+
+.vsection__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vsection__swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+
+.vsection__swatch--unobserved {
+  background: var(--white);
+  border: 1px dashed var(--hairline);
+}
+
+/* ---- The deepen panel --------------------------------------------------- */
+
+/*
+   DEFAULT IS OVERLAY — out of flow, so it cannot squeeze the content at any width.
+   Push mode is opted into only when there's demonstrably room for both (below).
+   Overlay-by-default means a viewport we didn't anticipate degrades safely.
+*/
+.deepen {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  flex: none;
+  width: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--hairline);
+  background: var(--paper);
+  transition: width 0.26s ease;
+}
+
+.deepen--open {
+  width: var(--panel-w);
+  box-shadow: -12px 0 34px rgba(0, 0, 0, 0.06);
+}
+
+/*
+   Wide enough for the rigid column AND the panel side by side: 820 + 400 = 1220 of
+   stage, plus the 236px rail = 1456. So above 1460 the panel becomes a real flex
+   sibling and pushes — the scroll container narrows and the column RECENTRES at the
+   same width. Below it, the panel floats over the content instead.
+*/
+@media (min-width: 1460px) {
+  .deepen {
+    position: static;
+  }
+
+  .deepen--open {
+    box-shadow: none;
+  }
+}
+
+/* Fixed to the panel width so the contents don't reflow while the width animates. */
+.deepen__inner {
+  width: var(--panel-w);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 24px 20px;
+}
+
+.deepen__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.deepen__scope {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.deepen__close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.deepen__close:hover {
+  color: var(--ink);
+}
+
+.deepen__title {
+  font-family: var(--font-ui);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 11px;
+}
+
+/* Ephemeral until promoted — info blue, because it's dialogue, not a finding. */
+.deepen__tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border-radius: var(--r-xs);
+  padding: 4px 9px;
+  align-self: flex-start;
+  margin-bottom: 14px;
+  color: var(--info-ink);
+  background: var(--info-tint);
+}
+
+/* Promoted — it's part of the view now, so it takes the family accent. */
+.deepen__tag--added {
+  color: var(--accent-ink);
+  background: var(--accent-tint);
+}
+
+.deepen__body {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.deepen__body p {
+  margin: 0 0 12px;
+}
+
+.deepen__scoped-note {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hairline);
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.deepen__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.deepen__add--done {
+  cursor: default;
+  border-color: var(--hairline);
+  background: var(--white);
+  color: var(--accent-ink);
+}
+
+/* Inert on purpose — the real dialogue is a later skill, and a live-looking input
+   that does nothing is worse than an obvious placeholder. */
+.deepen__ask {
+  margin-top: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--white);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.deepen__ask-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--info);
+}
+
+/* The answer in words. A different kind of statement from the chart, hence the rule. */
+.vsection__takeaway {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px dashed var(--hairline);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}

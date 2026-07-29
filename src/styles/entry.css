@@ -1,0 +1,308 @@
+/* ---------------------------------------------------------------------------
+   entry.css — the hero command panel. The agentic front door: it must feel like
+   addressing an analyst, not filling a form (design brief §3A).
+   Values from the ENTRY block of `Vedha Core Loop.dc.html`.
+   --------------------------------------------------------------------------- */
+
+.cmd {
+  width: 100%;
+  max-width: var(--stage-max);
+  padding: 78px 34px 60px;
+}
+
+/* ---- Status ------------------------------------------------------------- */
+
+.cmd__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+
+.cmd__status-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: vpulse 2.4s infinite;
+}
+
+/* ---- Headline ----------------------------------------------------------- */
+
+.cmd__headline {
+  font-family: var(--font-display);
+  font-size: 60px;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  margin: 18px 0 12px;
+  font-weight: 400;
+}
+
+.cmd__sub {
+  font-size: 18px;
+  color: var(--ink-muted);
+}
+
+/* ---- The ask card ------------------------------------------------------- */
+
+.cmd__card {
+  margin-top: 30px;
+  background: var(--white);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-xl);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-panel);
+}
+
+.cmd__input {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.45;
+  padding: 6px 2px 18px;
+  color: var(--ink);
+}
+
+.cmd__input::placeholder {
+  color: var(--ink-faint);
+}
+
+.cmd__input:focus {
+  outline: none;
+}
+
+/* ---- Chip row ----------------------------------------------------------- */
+
+.cmd__controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cmd__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 10px 15px;
+  font-size: 14px;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The Workspace chip carries the operator's context, so it reads as set, not empty. */
+.cmd__chip--accent {
+  border-color: var(--teal);
+  background: var(--teal-tint);
+  color: var(--teal-deep);
+}
+
+.cmd__chip--ghost {
+  color: var(--ink-muted);
+}
+
+.cmd__caret {
+  color: var(--ink-faint);
+}
+
+.cmd__send {
+  margin-left: auto;
+  width: 50px;
+  height: 46px;
+  flex: none;
+  border-radius: 13px;
+  background: var(--teal-deep);
+  color: var(--white);
+  border: none;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.14s, opacity 0.14s;
+}
+
+.cmd__send:hover {
+  background: var(--teal);
+}
+
+.cmd__chip:focus-visible,
+.cmd__send:focus-visible,
+.picker__row:focus-visible,
+.example:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* ---- The in-panel picker ------------------------------------------------ */
+
+.picker {
+  margin-top: 14px;
+  border: 1px solid var(--teal);
+  border-radius: 15px;
+  overflow: hidden;
+  animation: vfade 0.18s ease;
+}
+
+.picker__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 13px 18px 7px;
+}
+
+.picker__eyebrow + .picker__row,
+.picker__row + .picker__row,
+.picker__row + .picker__eyebrow {
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.picker__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 18px;
+  font-size: 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--ink);
+}
+
+.picker__row--selectable {
+  cursor: pointer;
+}
+
+.picker__row--selectable:hover {
+  background: rgba(31, 30, 28, 0.025);
+}
+
+.picker__row--selected {
+  background: var(--teal-tint);
+  color: var(--teal-deep);
+}
+
+.picker__row--selected:hover {
+  background: var(--teal-tint);
+}
+
+/* The secondary dimensions' options, inline on the right of their row. Small and
+   quiet at rest — the workspace above is the decision that matters most. */
+.picker__options {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.picker__opt {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s, border-color 0.14s;
+}
+
+.picker__opt:hover {
+  color: var(--ink);
+  background: rgba(31, 30, 28, 0.04);
+}
+
+.picker__opt--selected {
+  color: var(--teal-deep);
+  background: var(--teal-tint);
+  border-color: var(--teal);
+}
+
+.picker__opt:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 1px;
+}
+
+/* ---- Example prompts ---------------------------------------------------- */
+
+.examples__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 28px 0 10px;
+}
+
+.examples {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.example {
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  border-radius: 13px;
+  padding: 13px 16px;
+  font-size: 14.5px;
+  text-align: left;
+  color: var(--ink);
+  max-width: 370px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.example:hover {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint);
+}
+
+.example__eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+
+/* ---- No recognised shape ------------------------------------------------ */
+
+/* Vedha couldn't place the ask against a report shape. Amber, not coral: this is
+   attention, not failure — there's nothing wrong, it just needs more to go on. */
+.cmd__unmatched {
+  margin-top: 26px;
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  background: var(--paper);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-body);
+  animation: vfade 0.22s ease;
+}
+
+.cmd__unmatched-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 8px;
+}

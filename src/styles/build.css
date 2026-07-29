@@ -1,0 +1,116 @@
+/* ---------------------------------------------------------------------------
+   build.css — the thread: echoed ask, narration, and the resolving step list.
+   Structure and state transitions from `vedha_full_flow_lowfi.html`, rendered at
+   the hi-fi weights established in the shell.
+   --------------------------------------------------------------------------- */
+
+.thread {
+  width: 100%;
+  max-width: var(--stage-max);
+  padding: 38px 34px 80px;
+}
+
+.thread__title {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 21px;
+  margin: 0 0 16px;
+}
+
+.thread__question {
+  border: 1px solid var(--hairline);
+  border-radius: 15px;
+  background: var(--white);
+  padding: 17px 19px;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.thread__narration {
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 22px 0 8px;
+  color: var(--ink-body);
+}
+
+.thread__narration b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---- The step list ------------------------------------------------------ */
+
+.steps {
+  margin: 6px 0 2px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 9px 0;
+  font-size: 15px;
+  line-height: 1.4;
+  transition: opacity 0.3s, color 0.3s;
+}
+
+.step__dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  margin-top: 5px;
+  background: #cfc9bb;
+}
+
+.step__strong {
+  font-weight: 600;
+}
+
+/* Not yet reached — present, so the operator can see what's coming, but drawn back. */
+.step--pending {
+  opacity: 0.45;
+  color: var(--ink-faint);
+}
+
+/* Working. The pulse is the only thing moving on the screen. */
+.step--active {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.step--active .step__dot {
+  background: var(--accent);
+  animation: vpulse 1.6s infinite;
+}
+
+/* Settled. */
+.step--done {
+  opacity: 1;
+  color: var(--ink);
+}
+
+.step--done .step__dot {
+  background: var(--accent-deep);
+}
+
+/* ---- Plan reveal -------------------------------------------------------- */
+
+/* Fades in once every step has resolved. Height isn't animated — the low-fi's
+   max-height transition never actually ran (max-height:none isn't animatable),
+   and easing opacity alone is what the eye reads anyway. */
+.plan-reveal {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+.plan-reveal--shown {
+  opacity: 1;
+  max-height: none;
+  overflow: visible;
+  pointer-events: auto;
+  margin-top: 22px;
+}

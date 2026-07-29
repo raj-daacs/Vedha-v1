@@ -1,0 +1,105 @@
+/* ---------------------------------------------------------------------------
+   tokens.css — the Vedha design system, as CSS custom properties.
+
+   Every value here is lifted verbatim from the design source
+   (`Vedha Core Loop.dc.html` + `vedha_design_brief.md` §4). Nothing is invented.
+   This is a locked identity, not an open choice — add tokens, don't retune them.
+
+   Naming is by ROLE, not by hue, so the state family can swap its accent
+   without any component stylesheet knowing which colour it got.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* ---- Surfaces ---------------------------------------------------------- */
+  --cream: #f5f2eb;              /* the canvas */
+  --paper: #fbfaf7;              /* cards, the rail */
+  --white: #fff;                 /* the ask card, input fields, chips */
+  --hairline: #e0ddd3;           /* every 1px rule in the product */
+  --hairline-soft: rgba(0, 0, 0, 0.06); /* row separators inside a bordered box */
+  --topbar: #efece3;             /* secondary bar fill */
+  --scrim: rgba(31, 30, 28, 0.34);      /* modal backdrop */
+  --translucent: rgba(251, 250, 247, 0.72); /* blurred context topbar */
+
+  --rule: #c9c4b6;               /* unselected radio ring, faint dividers */
+  --rule-dashed: #b7b3a6;        /* dashed "add / editable" affordances */
+  --grid: #eceae2;               /* chart gridlines, bar troughs */
+  --avatar: #d8d2c4;             /* avatar placeholder fill */
+
+  /* ---- Ink -------------------------------------------------------------- */
+  --ink: #1f1e1c;                /* primary */
+  --ink-body: #3a3a36;           /* narration paragraphs */
+  --ink-muted: #6a6a64;          /* labels, secondary copy */
+  --ink-faint: #9a9a90;          /* eyebrows, placeholders, meta */
+
+  /* ---- Accent · teal (the brand, and the FLOW family) ------------------- */
+  --teal: #1d9e75;
+  --teal-deep: #0f6e56;
+  --teal-tint: #e6f2ec;
+  --teal-mid: #7cc4a7;           /* mid step in the funnel/heat ramp */
+
+  /* ---- Accent · purple (reserved for the STATE family) ------------------ */
+  --purple: #6a5bd0;
+  --purple-ink: #3f349a;
+  --purple-tint: #eceafa;
+  --purple-rule: #bdb6df;
+
+  /* ---- Status ----------------------------------------------------------- */
+  --amber: #ba7517;              /* gap / attention */
+  --coral: #c0483f;              /* stop / worst step */
+  --coral-tint: #f7e6e3;
+  --info: #3e7cc0;               /* ephemeral / dialogue */
+  --info-ink: #27568c;
+  --info-tint: #e7eff8;
+
+  /* ---- Family aliases --------------------------------------------------- */
+  /* Components reference these, never --teal-* / --purple-* directly, so a
+     single [data-family] switch re-skins a whole subtree. Default = flow. */
+  --accent: var(--teal);
+  --accent-deep: var(--teal-deep);
+  --accent-tint: var(--teal-tint);
+  --accent-ink: var(--teal-deep);
+  --accent-glow: rgba(29, 158, 117, 0.5); /* the vpulse ring colour */
+
+  /* ---- Type ------------------------------------------------------------- */
+  --font-display: 'Instrument Serif', Georgia, serif;  /* display / headlines */
+  --font-ui: 'Inter Tight', system-ui, sans-serif;     /* UI headings, big numbers */
+  --font-body: 'DM Sans', system-ui, sans-serif;       /* body — the default */
+  --font-mono: 'JetBrains Mono', monospace;            /* eyebrows, tags, technical */
+
+  /* ---- Radii ------------------------------------------------------------ */
+  --r-xs: 5px;
+  --r-sm: 8px;
+  --r: 10px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  /* ---- Shadows (restrained — see the brief's "feel") -------------------- */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-panel: 0 6px 24px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 24px 70px rgba(0, 0, 0, 0.22);
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --rail-w: 236px;               /* the left rail — fixed, never collapses */
+  --stage-max: 860px;            /* the Entry / thread column */
+  --panel-w: 400px;              /* the deepen panel */
+
+  /* The Insight View column. RIGID — its width must be IDENTICAL whether the
+     deepen panel is open or closed (brief §5.2). Never set this from available
+     space: opening the panel may recentre the column, never resize it.
+     820px is chosen so the column still fits beside the rail on a ~1100px window
+     (1100 − 236 rail = 864), where the panel overlays instead of pushing. */
+  --view-col: 820px;
+  --app-min-h: 680px;
+}
+
+/* The state family re-points the accent aliases. Set data-family="state" on any
+   container and everything inside it goes purple. Flow needs no override. */
+[data-family='state'] {
+  --accent: var(--purple);
+  --accent-deep: var(--purple-ink);
+  --accent-tint: var(--purple-tint);
+  --accent-ink: var(--purple-ink);
+  --accent-glow: rgba(106, 91, 208, 0.5);
+}

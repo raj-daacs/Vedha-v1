@@ -1,0 +1,604 @@
+/* ---------------------------------------------------------------------------
+   plan.css — the composed plan: badge, chips, scope panel, beats, actions.
+
+   Every accent here goes through the --accent* aliases, never --teal-* or
+   --purple-* directly. That's what lets one set of rules serve both report
+   families: the thread sets data-family, tokens.css repoints the aliases, and
+   nothing in this file knows which family it drew.
+   --------------------------------------------------------------------------- */
+
+.plan__badge {
+  display: inline-block;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  border-radius: var(--r);
+  padding: 7px 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+/* ---- Context chips ------------------------------------------------------ */
+
+.plan__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 6px 13px;
+  font-size: 13px;
+  background: var(--white);
+  color: var(--ink);
+}
+
+/* Dashed = you can change this. Opens Edit A. */
+.chip--editable {
+  border-style: dashed;
+  border-color: var(--rule-dashed);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.chip--editable:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.chip--editable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Scope panel -------------------------------------------------------- */
+
+.scope {
+  border: 1px solid var(--accent);
+  background: var(--accent-tint);
+  border-radius: 14px;
+  padding: 15px 18px;
+  margin-bottom: 18px;
+}
+
+.scope__label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 11px;
+}
+
+.scope__facet {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.scope__facet-label {
+  flex: none;
+}
+
+.scope__note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+/* ---- The spine ---------------------------------------------------------- */
+
+.spine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.spine__seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.spine__arrow {
+  color: var(--ink-faint);
+}
+
+.spine__node {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--white);
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  padding: 6px 11px;
+}
+
+/* The work is where the job happens, so it's outlined... */
+.spine__node--work {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* ...and the output is the destination, so it's solid. */
+.spine__node--output {
+  background: var(--accent-deep);
+  color: var(--white);
+  border-color: var(--accent-deep);
+}
+
+/* ---- Scope tokens ------------------------------------------------------- */
+
+.token {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  padding: 3px 9px;
+  background: var(--white);
+  color: var(--ink-muted);
+}
+
+/* Used by this plan. */
+.token--in-plan {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Available in the workspace, not used here. Left at the resting style. */
+
+/* An invitation rather than a thing. */
+.token--add {
+  border-style: dashed;
+  border-color: var(--rule-dashed);
+  color: var(--ink-faint);
+}
+
+/* ---- Beats -------------------------------------------------------------- */
+
+.beat {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: var(--paper);
+}
+
+/* Optional, and the shape's own narration says it goes thin. Present, drawn back. */
+.beat--thin {
+  opacity: 0.55;
+}
+
+.beat__question {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 15.5px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.beat__category {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-xs);
+  padding: 2px 7px;
+  background: var(--accent-tint);
+  flex: none;
+}
+
+.beat__tail {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.beat__detail {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-top: 8px;
+}
+
+.beat__confidence {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* ---- Actions ------------------------------------------------------------ */
+
+.plan__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn {
+  border-radius: var(--r-md);
+  padding: 11px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.14s, border-color 0.14s;
+}
+
+.btn--primary {
+  border-color: var(--accent-deep);
+  background: var(--accent-deep);
+  color: var(--white);
+}
+
+.btn--primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn--ghost {
+  border-color: var(--hairline);
+  background: var(--white);
+  color: var(--ink);
+}
+
+.btn--ghost:hover {
+  background: var(--cream);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn--small {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+/* ---- Edit B — one beat, in place --------------------------------------- */
+
+.beat--editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+/* Sits at the end of the question row, quiet until wanted. */
+.beat__edit {
+  margin-left: auto;
+  border: 1px dashed var(--rule-dashed);
+  background: var(--white);
+  color: var(--ink-faint);
+  border-radius: var(--r-sm);
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  flex: none;
+}
+
+.beat__edit:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.beat__edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.beat__editor {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hairline);
+}
+
+.beat__editor-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 9px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Says what changed, and how little of it. */
+.beat__stamp {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent-ink);
+  background: var(--accent-tint);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.beat__reads {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* The scope chips are buttons here — same token look, now operable. */
+.beat__reads .token {
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.beat__reads .token:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.beat__reads .token:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.beat__editor-actions {
+  margin-top: 12px;
+}
+
+/* ---- Edit A — the intent & scope modal --------------------------------- */
+
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+.modal__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+}
+
+.modal__dialog {
+  position: relative;
+  width: 600px;
+  max-width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-modal);
+  padding: 28px 30px;
+  animation: vfade 0.22s ease;
+}
+
+.modal__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.modal__title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  margin: 0;
+}
+
+.modal__close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.modal__close:hover {
+  color: var(--ink);
+}
+
+.modal__note {
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  margin: 4px 0 20px;
+}
+
+.modal__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+
+.modal__intent {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 13px 15px;
+  font-size: 15px;
+  line-height: 1.5;
+  background: var(--white);
+  margin-bottom: 20px;
+  resize: vertical;
+}
+
+.modal__intent:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.modal__rows {
+  margin-bottom: 20px;
+}
+
+.modal__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.modal__row:first-child {
+  border-top: none;
+}
+
+.modal__row-label {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+.modal__row-options {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.modal__opt {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 3px 9px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.modal__opt:hover {
+  color: var(--ink);
+  background: rgba(31, 30, 28, 0.04);
+}
+
+.modal__opt--selected {
+  color: var(--accent-ink);
+  background: var(--accent-tint);
+  border-color: var(--accent);
+}
+
+.modal__opt:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- The eligible shapes ------------------------------------------------ */
+
+.modal__recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 20px;
+}
+
+.shape {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--hairline);
+  background: var(--white);
+  border-radius: 11px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.shape:hover {
+  border-color: var(--accent);
+}
+
+.shape--selected {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+.shape:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shape__radio {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--rule);
+}
+
+.shape__radio--on {
+  border: 4px solid var(--accent);
+}
+
+.shape__label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.shape__current {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--accent-ink);
+}
+
+.shape__summary {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.modal__empty,
+.modal__warning {
+  font-size: 13px;
+  color: var(--amber);
+  background: var(--paper);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.modal__actions {
+  display: flex;
+  gap: 10px;
+}
