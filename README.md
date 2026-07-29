@@ -357,3 +357,4 @@ that persists, not a message; the deepen panel repositions the content column ra
 than resizing it; deepen answers are ephemeral until promoted; confidence is stated
 honestly; and internal machinery — atom ids, gap tags, schema fields, routing names —
 never reaches the UI.
+# Vedha-v1
