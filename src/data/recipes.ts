@@ -59,7 +59,7 @@ export const RECIPES: RecipeBook = [
     trigger: {
       shape: 'scorecard',
       goal_metric_kind: 'ratio / level vs benchmark',
-      intent_signals: ['sticky', 'stickiness', 'engagement', 'health', 'how are we doing', 'where do we stand', 'status'],
+      intent_signals: ['sticky', 'stickiness', 'engagement', 'health', 'how are we doing', 'where do we stand', 'status', 'dau/mau', 'dau', 'wau', 'mau', 'active users', 'daily active'],
     },
     beats: [
       { id: 'ss_stand_level', category: 'stand', question: 'Where it stands vs benchmark', reads: ['levels', 'ratios', 'benchmark'], builds: 'scorecard of levels + ratios, each flagged', atoms: ['Scorecard'], confidence: 'from_data' },

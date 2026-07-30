@@ -7,16 +7,13 @@
 // should produce, plus the structural invariants that no amount of case-writing
 // would catch.
 //
-// Seven sections:
+// Six sections:
 //
 //   A  · THE SPEC'S OWN CASES. The eleven from vedha_scope_resolution §06,
 //        asserting the resolved value AND its source. These are the acceptance
 //        criteria; if one fails, the resolver disagrees with its own spec.
 //   B  · ROUTING CASES. Carried over from the old matcher table. These guard
 //        against a signal change silently re-routing an unrelated ask.
-//   B2 · KNOWN DATA GAPS. Asks that land somewhere defensible but not where the
-//        shape's own content says they should. Asserted at current behaviour so
-//        the gap stays visible without failing the suite.
 //   C  · THE SHIPPED PROMPT CHIPS. Every workflow's two declared examplePrompts,
 //        resolved. The chips are data now, so a careless prompt would ship a
 //        chip that flags itself off-domain.
@@ -161,6 +158,8 @@ const ROUTE_CASES: RouteCase[] = [
   { text: 'where is the decay', workflow: 'Retention', expect: 'cohort_longitudinal', notFlag: 'assumed_primary_recipe' },
   { text: 'where do we stand', workflow: 'Retention', expect: 'state_scorecard', notFlag: 'assumed_primary_recipe' },
   { text: 'how are we doing', workflow: 'Retention', expect: 'state_scorecard', notFlag: 'assumed_primary_recipe' },
+  { text: 'what is our DAU/MAU', workflow: 'Retention', expect: 'state_scorecard', notFlag: 'assumed_primary_recipe', why: 'the scorecard is the shape that renders DAU/WAU/MAU tiles — "retention" must not pull it to the cohort' },
+  { text: 'how many active users', workflow: 'Retention', expect: 'state_scorecard', notFlag: 'assumed_primary_recipe' },
   { text: 'Are retention cohorts improving?', workflow: 'Retention', expect: 'cohort_longitudinal', notFlag: 'assumed_primary_recipe' },
   { text: 'How are the signup cohorts maturing?', workflow: 'Activation', expect: 'cohort_longitudinal', notFlag: 'assumed_primary_recipe' },
   { text: "Activation trend last quarter, and where we're losing people", workflow: 'Activation', expect: 'funnel_conversion', notFlag: 'assumed_primary_recipe' },
@@ -204,54 +203,6 @@ for (const c of ROUTE_CASES) {
     for (const e of errs) console.log(`        ${e}`)
   }
   if (c.why) console.log(`        ${c.why}`)
-}
-
-// ===========================================================================
-// B2 · KNOWN DATA GAPS
-//
-// Asks that resolve somewhere defensible but NOT where the shape's own content says
-// they should. These assert today's behaviour so the suite stays green and the gap
-// stays visible — and so that if the underlying data is fixed, the case fails loudly
-// and someone deletes it rather than leaving a stale expectation behind.
-//
-// Not code bugs. Each one is a signal the recipe data doesn't carry.
-// ===========================================================================
-
-interface GapCase {
-  text: string
-  workflow: WorkflowName
-  resolvesTo: RecipeId
-  shouldArguablyBe: RecipeId
-  gap: string
-}
-
-const GAP_CASES: GapCase[] = [
-  {
-    text: 'what is our DAU/MAU',
-    workflow: 'Retention',
-    resolvesTo: 'cohort_longitudinal',
-    shouldArguablyBe: 'state_scorecard',
-    gap:
-      "state_scorecard's intent_signals no longer include a DAU/MAU entry (the prior\n" +
-      '        recipe data did). Its own beats read "levels / ratios" and its rendered view\n' +
-      '        shows DAU/WAU/MAU tiles, so the scorecard IS the shape that answers this —\n' +
-      '        but nothing in the signals says so, and "retention" pulls it to the cohort.\n' +
-      "        Fix belongs in recipes.ts intent_signals, not here.",
-  },
-]
-
-console.log('\n=== B2 · known data gaps (asserted at current behaviour) ===\n')
-
-for (const c of GAP_CASES) {
-  const r = resolve(picksFor(c.workflow), c.text)
-  const label = `[${c.workflow}] "${c.text}" → ${r.recipe}  (arguably ${c.shouldArguablyBe})`
-  if (r.recipe === c.resolvesTo) {
-    pass(label)
-    console.log(`        GAP: ${c.gap}`)
-  } else {
-    fail(`${label} — resolves to ${r.recipe}, no longer the recorded behaviour`)
-    console.log('        If the data was fixed, delete this case from GAP_CASES.')
-  }
 }
 
 // ===========================================================================
@@ -464,11 +415,11 @@ for (const pair of planDeep) console.log(`        ${pair}`)
 
 // ===========================================================================
 
-const total = SPEC_CASES.length + ROUTE_CASES.length + GAP_CASES.length + WORKFLOWS.length * 2
+const total = SPEC_CASES.length + ROUTE_CASES.length + WORKFLOWS.length * 2
 console.log(
   failures === 0
     ? `\nALL CHECKS PASS — ${SPEC_CASES.length} spec cases · ${ROUTE_CASES.length} routing · ` +
-      `${GAP_CASES.length} known gap · ${WORKFLOWS.length * 2} prompt chips · ` +
+      `${WORKFLOWS.length * 2} prompt chips · ` +
       `invariants D–F  (${total} cases)`
     : `\n${failures} FAILED`,
 )
