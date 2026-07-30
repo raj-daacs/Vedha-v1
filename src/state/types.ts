@@ -28,6 +28,16 @@ export type Screen = 'entry' | 'thread' | 'view'
 /** Which rail destination is selected. 'you' is presentational, so not included. */
 export type RailKey = 'new' | 'views' | 'search' | 'settings'
 
+/**
+ * The scope dimensions that have their own picker.
+ *
+ * `altitude` and `workflow` are the scope proper — they decide which recipes are
+ * even reachable. `output` and `period` are the two axes the resolver can also read
+ * out of the text, which is exactly why they need pickers: without a way to set them
+ * deliberately, the "explicit pick" tier of the precedence rules is unreachable.
+ */
+export type PickerKey = 'altitude' | 'workflow' | 'output' | 'period'
+
 export interface AppState {
   screen: Screen
   rail: RailKey
@@ -59,8 +69,14 @@ export interface AppState {
   /** What was actually asked. Empty until SUBMIT_INTENT. */
   submittedIntent: string
 
-  /** The in-panel Workflow/Altitude/Output/Period picker. */
-  pickerOpen: boolean
+  /**
+   * WHICH scope picker is open, or null for none.
+   *
+   * Was a boolean, when one panel held every dimension and all three chips opened
+   * it. Each chip now opens only its own dimension, so the state has to name one —
+   * and only one can be open, since they share the space under the chip row.
+   */
+  pickerOpen: PickerKey | null
 
   /** The recipe the submitted ask resolved to. Null before any ask. */
   recipeId: RecipeId | null
@@ -146,7 +162,9 @@ export type Action =
   | { type: 'NEW' }
   /** Every keystroke in the ask field. */
   | { type: 'SET_DRAFT'; value: string }
-  | { type: 'TOGGLE_PICKER' }
+  /** Open one dimension's picker, or close it if it's already the open one. */
+  | { type: 'TOGGLE_PICKER'; picker: PickerKey }
+  | { type: 'CLOSE_PICKER' }
   | { type: 'SET_WORKFLOW'; workflow: WorkflowName }
   | { type: 'SET_ALTITUDE'; altitude: Altitude }
   | { type: 'SET_OUTPUT'; output: Output }

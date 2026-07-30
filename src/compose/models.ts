@@ -58,13 +58,50 @@ export interface BuildStep {
   isRecipeStep: boolean
 }
 
+/**
+ * One piece of the restated query. Plain prose unless it carries a resolved value,
+ * in which case `source` says where that value came from.
+ *
+ * The component renders a chip per source and nothing else — it is handed no recipe,
+ * no flags and no ids, so it cannot decide what counts as assumed. That judgement
+ * belongs to the composer.
+ */
+export interface ResolutionSegment {
+  text: string
+  /**
+   * `picked`  — the operator chose it
+   * `text`    — read out of what they typed
+   * `default` — a scoped default, and therefore correctable
+   */
+  source?: 'picked' | 'text' | 'default'
+  /** Tapping this opens Edit A. Set on defaults, because those are the guesses. */
+  correctable?: boolean
+}
+
+/**
+ * Something Vedha should say out loud about how it resolved the ask.
+ *
+ * `assumed` — a defensible default was taken, and here's the alternative.
+ * `check`   — the text landed nowhere; say what we did instead and ask.
+ */
+export interface ResolutionNote {
+  tone: 'assumed' | 'check'
+  text: string
+}
+
 export interface BuildModel {
   /** "Activation — last quarter" */
   title: string
   /** The operator's question, echoed back verbatim. */
   question: string
-  /** First-person narration, split so the subject can carry weight. */
-  narration: { pre: string; strong: string; post: string }
+  /**
+   * The resolved query restated in plain words, each value tagged with where it came
+   * from. This REPLACES the old free-text narration: the two said nearly the same
+   * thing, and only this one can be honest about what was assumed.
+   */
+  resolution: ResolutionSegment[]
+  /** Empty when nothing had to be assumed — the common case once text is specific. */
+  notes: ResolutionNote[]
   steps: BuildStep[]
 }
 

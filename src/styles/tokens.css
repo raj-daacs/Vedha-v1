@@ -53,7 +53,8 @@
   --bronze-rule: #ddc79b;
 
   /* ---- Status ----------------------------------------------------------- */
-  --amber: #ba7517;              /* gap / attention */
+  --amber: #ba7517;              /* gap / attention / an assumption */
+  --amber-tint: #f6eedd;         /* assumed-value chips, the check note */
   --coral: #c0483f;              /* stop / worst step */
   --coral-tint: #f7e6e3;
   --info: #3e7cc0;               /* ephemeral / dialogue */

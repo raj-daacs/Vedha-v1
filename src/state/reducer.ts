@@ -25,8 +25,8 @@ export const initialState: AppState = {
   periodTouched: false,
   draftIntent: '',
   submittedIntent: '',
-  // The design file ships the picker open to document that state; at rest it's closed.
-  pickerOpen: false,
+  // The design file ships a picker open to document that state; at rest none is.
+  pickerOpen: null,
   recipeId: null,
   resolution: null,
   buildStep: -1,
@@ -105,10 +105,18 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, draftIntent: action.value }
 
     case 'TOGGLE_PICKER':
-      return { ...state, pickerOpen: !state.pickerOpen }
+      return {
+        ...state,
+        pickerOpen: state.pickerOpen === action.picker ? null : action.picker,
+      }
+
+    case 'CLOSE_PICKER':
+      return { ...state, pickerOpen: null }
 
     case 'SET_WORKFLOW':
-      return withWorkflow(state, action.workflow)
+      // Close on pick: the workflow is the one dimension where choosing is the whole
+      // errand, so leaving the list open afterwards just asks to be dismissed.
+      return { ...withWorkflow(state, action.workflow), pickerOpen: null }
 
     case 'SET_ALTITUDE': {
       // Altitude cascades: a workflow belongs to exactly one altitude, so the
@@ -148,7 +156,7 @@ export function reducer(state: AppState, action: Action): AppState {
         period: resolved.period,
         draftIntent: intent,
         submittedIntent: intent,
-        pickerOpen: false,
+        pickerOpen: null,
         recipeId: resolved.recipe,
         resolution: {
           sources: resolved.sources,

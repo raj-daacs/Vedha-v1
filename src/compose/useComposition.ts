@@ -46,7 +46,7 @@ export interface Composition {
 export function useComposition(): Composition {
   const { state } = useApp()
   const { recipeId, submittedIntent, workflow, altitude, output, period } = state
-  const { deepenScope, promoted, editBeat, beatReads } = state
+  const { deepenScope, promoted, editBeat, beatReads, resolution } = state
 
   return useMemo(() => {
     const recipe = recipeId ? getRecipe(recipeId) : undefined
@@ -64,7 +64,7 @@ export function useComposition(): Composition {
     const context: ComposeContext = { intent: submittedIntent, workflow, altitude, output, period }
 
     return {
-      build: composeBuild(recipe, context),
+      build: composeBuild(recipe, context, resolution),
       plan: composePlan(recipe, context, { editBeat, beatReads }),
       view: composeView(recipe, context, promoted),
       deepen: composeDeepen(recipe, context, deepenScope, promoted),
@@ -82,5 +82,6 @@ export function useComposition(): Composition {
     promoted,
     editBeat,
     beatReads,
+    resolution,
   ])
 }

@@ -9,11 +9,46 @@
 // ---------------------------------------------------------------------------
 
 import { useLayoutEffect, useRef } from 'react'
-import { OUTPUT_LABELS } from '../../data/scope'
+import { OUTPUT_LABELS, PERIOD_LABELS } from '../../data/scope'
 import { useApp } from '../../state/AppContext'
+import type { Output, Period } from '../../data/recipe_schema'
+import type { PickerKey } from '../../state/types'
 import { useAsk } from '../../state/useAsk'
-import { ContextPicker } from './ContextPicker'
-import { ExamplePrompts } from './ExamplePrompts'
+import { PromptChips } from './PromptChips'
+import { ScopePicker } from './ScopePicker'
+
+/**
+ * The chip row. Each chip names one dimension and opens only that dimension.
+ *
+ * Workflow leads and carries the accent — it's the one pick that decides which
+ * questions are even askable. Altitude sits before it because it gates the workflow
+ * list. Output and period follow: both can also be read out of the text, so their
+ * chips exist mainly so the operator CAN be deliberate, not because they must be.
+ */
+const CHIPS: Array<{
+  key: PickerKey
+  glyph: string
+  label: string
+  className?: string
+  value: (state: { workflow: string; altitude: string; output: Output; period: Period }) => string
+}> = [
+  { key: 'altitude', glyph: '⬡', label: 'Altitude', value: (s) => s.altitude },
+  {
+    key: 'workflow',
+    glyph: '◇',
+    label: 'Workflow',
+    className: 'cmd__chip--accent',
+    value: (s) => s.workflow,
+  },
+  { key: 'output', glyph: '▤', label: 'Output', value: (s) => OUTPUT_LABELS[s.output] },
+  {
+    key: 'period',
+    glyph: '◷',
+    label: 'Period',
+    className: 'cmd__chip--ghost',
+    value: (s) => PERIOD_LABELS[s.period],
+  },
+]
 
 export function CommandPanel() {
   const { state, dispatch } = useApp()
@@ -71,41 +106,31 @@ export function CommandPanel() {
           />
 
           <div className="cmd__controls">
-            <button
-              type="button"
-              className="cmd__chip cmd__chip--accent"
-              aria-expanded={state.pickerOpen}
-              onClick={() => dispatch({ type: 'TOGGLE_PICKER' })}
-            >
-              ◇ Workflow: {state.workflow} <span className="cmd__caret">▾</span>
-            </button>
-
-            <button
-              type="button"
-              className="cmd__chip"
-              aria-expanded={state.pickerOpen}
-              onClick={() => dispatch({ type: 'TOGGLE_PICKER' })}
-            >
-              ▤ Output: {OUTPUT_LABELS[state.output]} <span className="cmd__caret">▾</span>
-            </button>
-
-            <button
-              type="button"
-              className="cmd__chip cmd__chip--ghost"
-              aria-expanded={state.pickerOpen}
-              onClick={() => dispatch({ type: 'TOGGLE_PICKER' })}
-            >
-              ⋯ more
-            </button>
+            {CHIPS.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                className={`cmd__chip${chip.className ? ` ${chip.className}` : ''}${
+                  state.pickerOpen === chip.key ? ' cmd__chip--open' : ''
+                }`}
+                aria-expanded={state.pickerOpen === chip.key}
+                onClick={() => dispatch({ type: 'TOGGLE_PICKER', picker: chip.key })}
+              >
+                {chip.glyph} {chip.label}: {chip.value(state)}{' '}
+                <span className="cmd__caret">▾</span>
+              </button>
+            ))}
 
             <button type="button" className="cmd__send" aria-label="Ask" onClick={submit}>
               ➤
             </button>
           </div>
 
-          {state.pickerOpen && <ContextPicker />}
+          {/* One panel, whichever chip is open. Only one can be — they share the space
+              under the row, and two open lists would compete for the same decision. */}
+          {state.pickerOpen && <ScopePicker open={state.pickerOpen} />}
 
-          <ExamplePrompts />
+          <PromptChips />
         </div>
 
         {/* The no-match panel that used to live here is gone. Entry has no dead end

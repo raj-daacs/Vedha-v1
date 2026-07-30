@@ -26,15 +26,139 @@
   line-height: 1.45;
 }
 
-.thread__narration {
+/* ---- The resolved query, restated -------------------------------------------
+   Replaces the old .thread__narration. Same slot, same weight in the page — but
+   every resolved value is a chip whose colour says where it came from, and the
+   assumed ones are buttons.
+
+   The three source colours are borrowed from existing status tokens rather than
+   new ones: info for a deliberate pick (the same blue the deepen panel uses for
+   "the operator did this"), accent for something read from their words, amber for
+   an assumption — the colour this app already uses for "attention, a gap". Amber
+   is dashed as well as tinted, so the affordance survives without colour. */
+
+.rq {
+  margin: 22px 0 10px;
+}
+
+.rq__line {
   font-size: 16px;
-  line-height: 1.55;
-  margin: 22px 0 8px;
+  line-height: 2;
+  color: var(--ink-body);
+  margin: 0;
+}
+
+.rq__chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  margin: 0 1px;
+  border: 1px solid transparent;
+}
+
+.rq__chip--picked {
+  background: var(--info-tint);
+  color: var(--info-ink);
+  border-color: var(--info);
+}
+
+.rq__chip--text {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.rq__chip--default {
+  background: var(--amber-tint);
+  color: var(--amber);
+  border: 1px dashed var(--amber);
+}
+
+.rq__chip--tappable {
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.rq__chip--tappable:hover {
+  background: var(--white);
+  border-style: solid;
+}
+
+.rq__chip--tappable:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.rq__legend {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.rq__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rq__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.rq__swatch--picked {
+  background: var(--info);
+}
+
+.rq__swatch--text {
+  background: var(--accent);
+}
+
+.rq__swatch--default {
+  background: var(--amber);
+}
+
+/* An assumption stated out loud. Not an error — a question, so it reads as the
+   agent checking rather than the app complaining. */
+.rq__note {
+  margin-top: 12px;
+  padding: 11px 14px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  background: var(--paper);
+  border-left: 3px solid var(--amber);
   color: var(--ink-body);
 }
 
-.thread__narration b {
-  font-weight: 600;
+/* Text that landed nowhere gets the louder treatment — this is the one case where
+   Vedha genuinely needs an answer before the plan is worth reading. */
+.rq__note--check {
+  background: var(--amber-tint);
+}
+
+.rq__note-action {
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-deep);
+  background: none;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  padding: 0;
+  cursor: pointer;
+}
+
+.rq__note-action:hover {
   color: var(--ink);
 }
 
