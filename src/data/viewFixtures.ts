@@ -18,6 +18,7 @@
 
 import type {
   BeatView,
+  BridgeData,
   CohortMatrixData,
   DeepenAnswer,
   SeriesPoint,
@@ -427,9 +428,16 @@ const RETENTION_COHORT: ViewFixture = {
             points: series(NRR_BY_AGE, (age) => `m${age}`),
             baseline: { value: NRR_BASELINE, label: `${NRR_BASELINE}% line` },
             yTicks: [110, 100, 90, 80],
+            // Both derived from the series, so the split can't drift from the data.
+            troughIndex: nrrTroughIndex,
+            crossIndex: nrrRecoveryIndex,
+            // The endpoint gets its enlarged marker from the atom, but no annotation:
+            // at 13 points across this width it would sit ~38px from the crossing
+            // label and collide with it. The headline already states where the curve
+            // ends, so the text would be a third telling of the same number.
             annotations: [
               { pointIndex: nrrTroughIndex, text: `trough ${NRR_BY_AGE[nrrTroughIndex]}%` },
-              { pointIndex: nrrRecoveryIndex, text: `back above ${NRR_BASELINE}%` },
+              { pointIndex: nrrRecoveryIndex, text: `crosses ${NRR_BASELINE}% · m${nrrRecoveryIndex}` },
             ],
             unit: '%',
           },
@@ -482,6 +490,427 @@ const RETENTION_COHORT: ViewFixture = {
 }
 
 // ===========================================================================
+// THE THREE BRIDGES — one atom, three balances
+//
+// Every bridge states an opening and the signed movements, and lets the closing be
+// COMPUTED. Typing the closing separately is how a waterfall ends up with bars that
+// don't land on their own anchor; here that cannot happen, and `check:recipes`
+// section G asserts the reconciliation anyway in case someone later hardcodes one.
+// ===========================================================================
+
+interface BridgeSpec {
+  opening: { label: string; value: number }
+  closingLabel: string
+  movements: Array<{ label: string; delta: number }>
+  yTicks: number[]
+  prefix?: string
+  suffix?: string
+}
+
+/** Close the bridge from its own movements, rounded to the display precision. */
+function bridge(spec: BridgeSpec): BridgeData {
+  const closing = spec.movements.reduce((total, m) => total + m.delta, spec.opening.value)
+  return {
+    opening: spec.opening,
+    // Rounded to two decimals — the precision the chart prints — so the arithmetic and
+    // the label agree exactly rather than to within a float epsilon.
+    closing: { label: spec.closingLabel, value: Math.round(closing * 100) / 100 },
+    movements: spec.movements,
+    yTicks: spec.yTicks,
+    prefix: spec.prefix,
+    suffix: spec.suffix,
+  }
+}
+
+const money = (value: number) => `$${value.toFixed(2)}M`
+const sumOf = (movements: BridgeData['movements'], sign: 1 | -1) =>
+  Math.round(movements.filter((m) => Math.sign(m.delta) === sign).reduce((t, m) => t + m.delta, 0) * 100) / 100
+
+/** The largest movement on one side, for a takeaway that names it. */
+function largest(movements: BridgeData['movements'], sign: 1 | -1) {
+  const side = movements.filter((m) => Math.sign(m.delta) === sign)
+  return side.reduce((best, m) => (Math.abs(m.delta) > Math.abs(best.delta) ? m : best), side[0])
+}
+
+// ---- Company · Revenue engine — the ARR build ------------------------------
+// Reconciled with the $4.20M → $4.98M figures the design sketches use.
+
+const ARR_BRIDGE = bridge({
+  opening: { label: 'Opening', value: 4.2 },
+  closingLabel: 'Closing',
+  movements: [
+    { label: 'New', delta: 0.85 },
+    { label: 'Expansion', delta: 0.42 },
+    { label: 'Contraction', delta: -0.18 },
+    { label: 'Churn', delta: -0.31 },
+  ],
+  yTicks: [5.2, 4.6, 4.0, 3.4],
+  prefix: '$',
+  suffix: 'M',
+})
+
+const arrGross = sumOf(ARR_BRIDGE.movements, 1)
+const arrLost = Math.abs(sumOf(ARR_BRIDGE.movements, -1))
+const arrNet = Math.round((ARR_BRIDGE.closing.value - ARR_BRIDGE.opening.value) * 100) / 100
+const arrKept = Math.round((1 - arrLost / arrGross) * 100)
+const arrExpansion = ARR_BRIDGE.movements[1].delta
+const arrBiggestCut = largest(ARR_BRIDGE.movements, -1)
+const arrProjected = Math.round((ARR_BRIDGE.closing.value + arrNet) * 100) / 100
+
+const REVENUE_ARR_BUILD: ViewFixture = {
+  subtitle: 'how ARR moved, opening to closing',
+  meta: 'Revenue engine workflow · ARR bridge · opening → closing',
+  beats: {
+    mb_stand: {
+      subtitle: 'Opening ARR → movements → closing ARR',
+      headline: {
+        value: money(ARR_BRIDGE.closing.value),
+        delta: { text: `▲ ${money(arrNet)} net new`, tone: 'good' },
+        note: `from ${money(ARR_BRIDGE.opening.value)} opening`,
+      },
+      panels: [{ atom: 'bridge', label: 'ARR build', data: ARR_BRIDGE }],
+      takeaway: `ARR closed at ${money(ARR_BRIDGE.closing.value)}, up ${money(arrNet)}. Gross additions of ${money(arrGross)} did the work and ${money(arrLost)} leaked back out — so about ${arrKept}% of what was won was kept.`,
+    },
+
+    mb_why: {
+      subtitle: 'Which components drove the move · same bridge, movements in focus',
+      panels: [
+        {
+          atom: 'bridge',
+          label: 'Components of the move',
+          // The same walk, deliberately: "why" isn't a different chart, it's the same
+          // bridge read one bar at a time. The projected close rides HERE rather than
+          // as its own section — `mb_ahead` is optional on a bending recipe, so the
+          // plan doesn't offer it and `beatsInPlan` won't let the view invent it.
+          data: { ...ARR_BRIDGE, projected: { label: 'Next close', value: arrProjected } },
+        },
+      ],
+      takeaway: `${arrBiggestCut.label} is the largest single drag at ${money(Math.abs(arrBiggestCut.delta))} — more than Expansion adds at ${money(arrExpansion)}. Holding this quarter's mix puts the next close near ${money(arrProjected)}, which is directional: it assumes the same mix repeats.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole bridge, or select a section to scope the question to it.',
+        'Bridge questions are usually about one component — which movement, and why it is that size next to the others.',
+      ],
+    },
+    mb_stand: {
+      scopeLabel: 'deepen · the balance',
+      title: 'The move, start to end — deeper',
+      body: [
+        `${money(ARR_BRIDGE.opening.value)} opening to ${money(ARR_BRIDGE.closing.value)} closing, a net ${money(arrNet)}.`,
+        `The net is small next to the gross: ${money(arrGross)} in, ${money(arrLost)} out. A bridge is the only shape that shows both at once — a trend line would show the ${money(arrNet)} and hide the rest.`,
+      ],
+      promotedSection: {
+        question: 'How much of what we won did we keep?',
+        takeaway: `About ${arrKept}%. Gross additions of ${money(arrGross)} against ${money(arrLost)} of contraction and churn, leaving ${money(arrNet)} net.`,
+      },
+    },
+    mb_why: {
+      scopeLabel: 'deepen · components',
+      title: 'Which components drove it — deeper',
+      body: [
+        `${arrBiggestCut.label} at ${money(Math.abs(arrBiggestCut.delta))} is the largest reduction, and it outweighs Expansion's ${money(arrExpansion)}.`,
+        'New business is carrying the quarter. That is the reading worth acting on: the installed base is not compounding on its own, because retention losses consume most of what expansion adds.',
+      ],
+      promotedSection: {
+        question: 'Is the base compounding without new sales?',
+        takeaway: `Not yet. Expansion adds ${money(arrExpansion)} while contraction and churn remove ${money(arrLost)}, so the base is net negative without New. Growth is acquisition-led this quarter.`,
+      },
+    },
+  },
+}
+
+// ---- Financial · P&L — profit, quarter to quarter --------------------------
+// Movements are effects ON profit, so a cost that grew carries a negative sign.
+
+const PL_BRIDGE = bridge({
+  opening: { label: 'Opening', value: 0.62 },
+  closingLabel: 'Closing',
+  movements: [
+    { label: 'Revenue', delta: 0.48 },
+    { label: 'COGS', delta: -0.11 },
+    { label: 'S&M', delta: -0.19 },
+    { label: 'R&D', delta: -0.09 },
+  ],
+  yTicks: [1.2, 0.9, 0.6, 0.3],
+  prefix: '$',
+  suffix: 'M',
+})
+
+const plRevenue = PL_BRIDGE.movements[0].delta
+const plCosts = Math.abs(sumOf(PL_BRIDGE.movements, -1))
+const plNet = Math.round((PL_BRIDGE.closing.value - PL_BRIDGE.opening.value) * 100) / 100
+const plConversion = Math.round((plNet / plRevenue) * 100)
+const plBiggestCut = largest(PL_BRIDGE.movements, -1)
+const plCutShare = Math.round((Math.abs(plBiggestCut.delta) / plCosts) * 100)
+
+const PL_BUILD: ViewFixture = {
+  subtitle: 'how net profit moved, quarter to quarter',
+  meta: 'P&L workflow · profit bridge · opening → closing',
+  beats: {
+    mb_stand: {
+      subtitle: 'Opening net profit → movements → closing net profit',
+      headline: {
+        value: money(PL_BRIDGE.closing.value),
+        delta: { text: `▲ ${money(plNet)} vs last quarter`, tone: 'good' },
+        note: `from ${money(PL_BRIDGE.opening.value)} opening`,
+      },
+      panels: [{ atom: 'bridge', label: 'Net profit bridge', data: PL_BRIDGE }],
+      takeaway: `Net profit closed at ${money(PL_BRIDGE.closing.value)}, up ${money(plNet)}. Revenue added ${money(plRevenue)} and cost growth took back ${money(plCosts)} of it — so the quarter converted about ${plConversion}% of its revenue gain into profit.`,
+    },
+
+    mb_why: {
+      subtitle: 'Which lines drove the move · same bridge, components in focus',
+      panels: [{ atom: 'bridge', label: 'Components of the move', data: PL_BRIDGE }],
+      takeaway: `${plBiggestCut.label} is the largest single drag at ${money(Math.abs(plBiggestCut.delta))} — roughly ${plCutShare}% of all cost growth, more than COGS and R&D together. The increase is concentrated in go-to-market rather than spread across the P&L.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole bridge, or select a section to scope the question to it.',
+        'On a profit bridge the useful questions are about conversion: how much of the revenue gain reached the bottom line, and what consumed the rest.',
+      ],
+    },
+    mb_stand: {
+      scopeLabel: 'deepen · the balance',
+      title: 'The move, quarter to quarter — deeper',
+      body: [
+        `${money(PL_BRIDGE.opening.value)} to ${money(PL_BRIDGE.closing.value)}, a net ${money(plNet)}.`,
+        `Revenue is the only positive movement. Every other line is a cost that grew, which is why the closing balance sits much closer to the opening than the ${money(plRevenue)} revenue gain alone would suggest.`,
+      ],
+      promotedSection: {
+        question: 'How much of the revenue gain reached profit?',
+        takeaway: `${plConversion}% — ${money(plNet)} of the ${money(plRevenue)} increase, with ${money(plCosts)} absorbed by cost growth.`,
+      },
+    },
+    mb_why: {
+      scopeLabel: 'deepen · components',
+      title: 'Which lines moved — deeper',
+      body: [
+        `${plBiggestCut.label} grew ${money(Math.abs(plBiggestCut.delta))}, against ${money(0.11)} in COGS and ${money(0.09)} in R&D.`,
+        'Sales and marketing is where the incremental spend went. Whether that was the right call depends on what it bought — which is an Acquisition question, not a P&L one.',
+      ],
+      promotedSection: {
+        question: 'Is cost growth broad or concentrated?',
+        takeaway: `Concentrated. ${plBiggestCut.label} accounts for roughly ${plCutShare}% of all cost growth this quarter.`,
+      },
+    },
+  },
+}
+
+// ---- Functional · Expansion — net expansion MRR ----------------------------
+
+const EXPANSION_BRIDGE = bridge({
+  opening: { label: 'Opening', value: 0.31 },
+  closingLabel: 'Closing',
+  movements: [
+    { label: 'Upsell', delta: 0.14 },
+    { label: 'Cross-sell', delta: 0.06 },
+    { label: 'Downgrade', delta: -0.05 },
+    { label: 'Churn', delta: -0.08 },
+  ],
+  yTicks: [0.5, 0.4, 0.3, 0.2],
+  prefix: '$',
+  suffix: 'M',
+})
+
+const expUpsell = EXPANSION_BRIDGE.movements[0].delta
+const expCross = EXPANSION_BRIDGE.movements[1].delta
+const expGross = sumOf(EXPANSION_BRIDGE.movements, 1)
+const expLost = Math.abs(sumOf(EXPANSION_BRIDGE.movements, -1))
+const expNet = Math.round((EXPANSION_BRIDGE.closing.value - EXPANSION_BRIDGE.opening.value) * 100) / 100
+const expGivenBack = Math.round((expLost / expGross) * 100)
+const crossVsUp = Math.round((expCross / expUpsell) * 100)
+
+const EXPANSION_BUILD: ViewFixture = {
+  subtitle: 'how net expansion MRR moved this quarter',
+  meta: 'Expansion workflow · expansion bridge · opening → closing',
+  beats: {
+    mb_stand: {
+      subtitle: 'Opening expansion MRR → movements → closing',
+      headline: {
+        value: money(EXPANSION_BRIDGE.closing.value),
+        delta: { text: `▲ ${money(expNet)} net`, tone: 'good' },
+        note: `from ${money(EXPANSION_BRIDGE.opening.value)} opening`,
+      },
+      panels: [{ atom: 'bridge', label: 'Net expansion MRR', data: EXPANSION_BRIDGE }],
+      takeaway: `Expansion MRR closed at ${money(EXPANSION_BRIDGE.closing.value)}, up ${money(expNet)}. Upsell and cross-sell added ${money(expGross)}; downgrades and churn took back ${money(expLost)}, which is ${expGivenBack}% of everything the motion won.`,
+    },
+
+    mb_why: {
+      subtitle: 'Which motions drove the move · same bridge, components in focus',
+      panels: [{ atom: 'bridge', label: 'Components of the move', data: EXPANSION_BRIDGE }],
+      takeaway: `Upsell is doing most of the work at ${money(expUpsell)} — more than twice cross-sell's ${money(expCross)}. Seats are growing faster than product attach, which says where the next motion has room.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole bridge, or select a section to scope the question to it.',
+        'Expansion questions usually compare the two directions: what the motion won against what the base gave back.',
+      ],
+    },
+    mb_stand: {
+      scopeLabel: 'deepen · the balance',
+      title: 'The move — deeper',
+      body: [
+        `${money(EXPANSION_BRIDGE.opening.value)} to ${money(EXPANSION_BRIDGE.closing.value)}, a net ${money(expNet)}.`,
+        `Gross expansion of ${money(expGross)} against ${money(expLost)} of downgrade and churn. The net is positive, but the retention side is consuming ${expGivenBack}% of the motion's output.`,
+      ],
+      promotedSection: {
+        question: 'Is expansion outrunning contraction?',
+        takeaway: `Yes, but not comfortably: ${money(expGross)} won against ${money(expLost)} lost, a net ${money(expNet)}.`,
+      },
+    },
+    mb_why: {
+      scopeLabel: 'deepen · motions',
+      title: 'Which motions moved it — deeper',
+      body: [
+        `Upsell ${money(expUpsell)}, cross-sell ${money(expCross)} — seats are growing faster than product attach.`,
+        'That mix matters for where to invest: upsell scales with the existing motion, while cross-sell needs a second product to land. The current split says the second one is under-worked.',
+      ],
+      promotedSection: {
+        question: 'Upsell or cross-sell — which is under-worked?',
+        takeaway: `Cross-sell. It contributes ${money(expCross)} against upsell's ${money(expUpsell)} — about ${crossVsUp}% as much, into a comparable installed base.`,
+      },
+    },
+  },
+}
+
+// ===========================================================================
+// COMPANY · Cost & Burn — the scorecard, reused
+//
+// NO NEW ATOM. A state shape watches levels and ratios against a bar, and that is as
+// true of burn as it is of engagement — so `Scorecard` and `StickinessTrend` take
+// this data unchanged. Only the fixture is new, which is the clearest evidence that
+// the atoms are parameterised by data rather than by subject.
+// ===========================================================================
+
+const BURN = { netBurn: 0.74, cash: 14.1 }
+const BURN_MULTIPLE_BAR = 1.5
+/** Burn multiple over six months. The last value is the ratio on the scorecard above. */
+const BURN_MULTIPLE_MONTHS = [1.7, 1.62, 1.55, 1.44, 1.36, 1.3]
+const burnNow = BURN_MULTIPLE_MONTHS[BURN_MULTIPLE_MONTHS.length - 1]
+const burnThen = BURN_MULTIPLE_MONTHS[0]
+/** Derived, never typed: runway must follow from cash ÷ burn or the tiles contradict. */
+const runwayMonths = round(BURN.cash / BURN.netBurn)
+/** Which month it crossed under the bar — read off the series, not asserted in prose. */
+const burnCrossMonth = BURN_MULTIPLE_MONTHS.findIndex((value) => value <= BURN_MULTIPLE_BAR) + 1
+const burnMonthsSinceCross = BURN_MULTIPLE_MONTHS.length - burnCrossMonth
+
+const COST_BURN_SCORECARD: ViewFixture = {
+  subtitle: 'where burn stands against plan',
+  meta: `Cost & Burn workflow · scorecard · last ${BURN_MULTIPLE_MONTHS.length} months`,
+  beats: {
+    ss_stand_level: {
+      subtitle: 'Levels & efficiency ratios · each flagged against its own bar',
+      panels: [
+        {
+          atom: 'scorecard',
+          data: {
+            groups: [
+              {
+                label: 'Levels',
+                tiles: [
+                  {
+                    value: money(BURN.netBurn),
+                    label: 'Net burn / mo',
+                    delta: { text: '6%', direction: 'down' },
+                  },
+                  { value: `$${BURN.cash.toFixed(1)}M`, label: 'Cash' },
+                  { value: `${runwayMonths} mo`, label: 'Runway' },
+                ],
+              },
+              {
+                label: 'Efficiency vs benchmark',
+                tiles: [
+                  {
+                    value: `${burnNow.toFixed(1)}×`,
+                    label: 'Burn multiple',
+                    benchmark: {
+                      text: `clears the ${BURN_MULTIPLE_BAR}× bar`,
+                      clears: burnNow <= BURN_MULTIPLE_BAR,
+                    },
+                    emphasis: true,
+                  },
+                  { value: '22%', label: 'Cost to serve · % of ARR' },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      takeaway: `Burn multiple is ${burnNow.toFixed(1)}×, inside the ${BURN_MULTIPLE_BAR}× bar, and net burn is down 6%. The ${runwayMonths}-month runway is a consequence of burning ${money(BURN.netBurn)} a month rather than a separate fact — bring burn down and it extends.`,
+    },
+
+    ss_stand_trend: {
+      subtitle: `Burn multiple over ${BURN_MULTIPLE_MONTHS.length} months · vs the ${BURN_MULTIPLE_BAR}× bar`,
+      panels: [
+        {
+          atom: 'stickinessTrend',
+          data: {
+            points: series(BURN_MULTIPLE_MONTHS, (i) => `m${i + 1}`),
+            benchmark: { value: BURN_MULTIPLE_BAR, label: `bar ${BURN_MULTIPLE_BAR}×` },
+            yTicks: [1.8, 1.5, 1.2],
+            startNote: `${BURN_MULTIPLE_MONTHS.length} mo ago · ${burnThen}×`,
+            endNote: `now · ${burnNow}×`,
+            unit: '',
+          },
+        },
+      ],
+      takeaway: `Improving steadily, ${burnThen}× → ${burnNow}× over ${BURN_MULTIPLE_MONTHS.length} months, and under the ${BURN_MULTIPLE_BAR}× bar for the last ${burnMonthsSinceCross}. Efficiency is trending the right way rather than sitting still inside the bar.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole scorecard, or select a tile or the trend to scope the question to it.',
+        'Burn is a state, so the useful questions are comparative: against plan, against the bar, or against what the spend bought.',
+      ],
+    },
+    ss_stand_level: {
+      scopeLabel: 'deepen · burn',
+      title: 'Where burn stands — deeper',
+      body: [
+        `Net burn ${money(BURN.netBurn)} a month against $${BURN.cash.toFixed(1)}M cash, so ${runwayMonths} months of runway.`,
+        `The burn multiple of ${burnNow.toFixed(1)}× matters more than the absolute: it says how much is spent to add a dollar of ARR, and inside ${BURN_MULTIPLE_BAR}× is efficient growth rather than bought growth.`,
+      ],
+      promotedSection: {
+        question: 'Is the runway a burn problem or a cash problem?',
+        takeaway: `A burn problem, and a mild one. $${BURN.cash.toFixed(1)}M of cash is healthy; ${runwayMonths} months follows arithmetically from spending ${money(BURN.netBurn)} a month. Burn is already down 6%, which extends runway without raising.`,
+      },
+    },
+    ss_stand_trend: {
+      scopeLabel: 'deepen · trend',
+      title: 'The efficiency trend — deeper',
+      body: [
+        `${burnThen}× → ${burnNow}× over ${BURN_MULTIPLE_MONTHS.length} months, crossing under the bar at month ${burnCrossMonth}.`,
+        'A falling burn multiple while ARR grows is the healthy combination: it means growth is getting cheaper, not that growth has stopped.',
+      ],
+      promotedSection: {
+        question: 'Is growth getting cheaper or just slower?',
+        takeaway: `Cheaper. The multiple fell from ${burnThen}× to ${burnNow}× while net burn also came down 6% — if growth had merely slowed, the multiple would have held or risen.`,
+      },
+    },
+  },
+}
+
+// ===========================================================================
 // The registry
 // ===========================================================================
 
@@ -493,4 +922,14 @@ export const VIEW_FIXTURES: Record<string, ViewFixture> = {
   'Activation:funnel_conversion': ACTIVATION_FUNNEL,
   'Retention:state_scorecard': RETENTION_SCORECARD,
   'Retention:cohort_longitudinal': RETENTION_COHORT,
+
+  // One recipe, three balances. `movement_bridge` renders in three workflows and each
+  // gets its own fixture — which is exactly why the key is the PAIR and not the
+  // recipe: the shape is shared, the subject isn't.
+  'Revenue engine:movement_bridge': REVENUE_ARR_BUILD,
+  'P&L:movement_bridge': PL_BUILD,
+  'Expansion:movement_bridge': EXPANSION_BUILD,
+
+  // The scorecard's second home — no new atom. See the fixture's note.
+  'Cost & Burn:state_scorecard': COST_BURN_SCORECARD,
 }

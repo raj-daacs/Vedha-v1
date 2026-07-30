@@ -92,8 +92,47 @@ export interface NrrCurveData {
   /** The 100% line: hold above it and the base is growing without new sales. */
   baseline: { value: number; label: string }
   yTicks: number[]
+  /**
+   * Where the curve stops falling and starts climbing. THE LINE IS SPLIT HERE, not at
+   * the baseline crossing: the decay leg reads coral and the recovery leg accent, so
+   * the recovery is accent-coloured even while it is still below 100%.
+   *
+   * That's the honest reading. Recovering from 87% to 94% is good news about the base
+   * whether or not it has cleared the bar yet, and colouring it as failure until it
+   * crosses would say the opposite.
+   */
+  troughIndex: number
+  /** Where the recovery leg crosses back above the baseline. Marked, not coloured. */
+  crossIndex?: number
   annotations?: Array<{ pointIndex: number; text: string }>
   unit: Unit
+}
+
+/**
+ * A waterfall: an opening balance, the movements that acted on it, a closing balance.
+ *
+ * THE BARS MUST BALANCE. `opening + Σ movements.delta === closing`, or the chart is
+ * lying — the bars would visibly fail to land on the closing anchor. Asserted for
+ * every fixture in `check:recipes`, because it is not a thing the eye catches.
+ */
+export interface BridgeData {
+  opening: { label: string; value: number }
+  closing: { label: string; value: number }
+  /** Signed. The sign alone decides direction and colour — no `kind` field, no legend. */
+  movements: Array<{ label: string; delta: number }>
+  /**
+   * A faint projected close, drawn beside the real one. Present only where a fixture
+   * asks for it, which is what keeps the projection out of views that only report.
+   */
+  projected?: { label: string; value: number }
+  yTicks: number[]
+  /**
+   * How anchor values and axis ticks read: `$` + value + `M` → "$4.20M". Movements
+   * deliberately render as bare signed deltas ("+0.85"), per the sketch — the unit is
+   * established by the anchors, and repeating it on every bar is noise.
+   */
+  prefix?: string
+  suffix?: string
 }
 
 export interface CohortMatrixData {
@@ -126,6 +165,7 @@ export type PanelSpec =
   | { atom: 'scorecard'; label?: string; data: ScorecardData }
   | { atom: 'stickinessTrend'; label?: string; data: StickinessTrendData }
   | { atom: 'nrrCurve'; label?: string; data: NrrCurveData }
+  | { atom: 'bridge'; label?: string; data: BridgeData }
 
 export interface LegendItem {
   /** A colour swatch, or 'unobserved' for the dashed outline. */

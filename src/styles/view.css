@@ -520,20 +520,102 @@
   stroke-linecap: round;
 }
 
-.nrr__segment--below {
+/* Split at the TROUGH, not at the 100% line — see NrrCurve.tsx. The recovery leg is
+   accent from the moment the curve turns, including the stretch where it is still
+   below the reference: it's recovering, and saying otherwise would read as failure.
+   --accent-deep rather than --accent so the climb out carries more weight than the
+   fall, which is the finding an operator is looking for. */
+.nrr__segment--decay {
   stroke: var(--coral);
 }
 
-.nrr__segment--above {
-  stroke: var(--accent);
+.nrr__segment--recovery {
+  stroke: var(--accent-deep);
 }
 
-.nrr__dot--below {
+.nrr__dot--decay {
   fill: var(--coral);
 }
 
-.nrr__dot--above {
+.nrr__dot--recovery {
+  fill: var(--accent-deep);
+}
+
+.nrr__annotation--decay {
+  fill: var(--coral);
+}
+
+.nrr__annotation--recovery {
+  fill: var(--accent-deep);
+}
+
+/* ---- Bridge (waterfall) --------------------------------------------------
+   The sign carries the colour, so there is no legend: additions take the family
+   accent, reductions coral. Opening and closing are the same hue as an addition but
+   deeper — they are balances, not movements, and the weight says so.
+
+   Note these are ALIASES, not --teal-*. movement_bridge is flow family so they
+   resolve to the sketch's teal exactly; using the alias is what lets a bridge in
+   another family bend with it. --coral stays raw: a reduction is a reduction in
+   every family, the same way the funnel's worst step is. */
+
+.bridge__bar--anchor rect {
+  fill: var(--accent-deep);
+}
+
+.bridge__bar--add rect {
   fill: var(--accent);
+}
+
+.bridge__bar--cut rect {
+  fill: var(--coral);
+}
+
+/* A projection is not a measurement. Outlined rather than filled, so it reads as a
+   shape the data hasn't reached yet. */
+.bridge__bar--projected rect {
+  fill: var(--accent-tint);
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+.bridge__label {
+  font-size: 11px;
+  fill: var(--ink-body);
+  font-family: var(--font-body);
+}
+
+.bridge__value {
+  font-size: 10px;
+  fill: var(--ink-muted);
+  font-family: var(--font-mono);
+}
+
+/* The signed delta takes the bar's colour — it's the same fact stated twice, and
+   the eye should be able to use either one. */
+.bridge__bar--cut .bridge__value {
+  fill: var(--coral);
+}
+
+.bridge__bar--projected .bridge__label,
+.bridge__bar--projected .bridge__value {
+  fill: var(--accent-deep);
+}
+
+/* Connects each bar to where the next one starts. Without it the floating bars read
+   as unrelated columns rather than one continuous walk. */
+.bridge__step {
+  stroke: var(--ink-faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* Solid, unlike the dashed target/benchmark lines: this is the floor the anchors
+   stand on, not a bar they're judged against. */
+.bridge__baseline {
+  stroke: var(--hairline);
+  stroke-width: 1;
 }
 
 .nrr__annotation {
@@ -956,6 +1038,17 @@
   }
 }
 
+/* The vertical sibling of vgrow, for the bridge's bars. Height is never animated —
+   same rule as the horizontal bars. */
+@keyframes vgrowY {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 @keyframes vappear {
   from {
     opacity: 0;
@@ -1012,6 +1105,34 @@
 .vsection--revealed .ranked__note {
   animation: vappear 240ms ease-out both;
   animation-delay: calc(var(--chart-in) + var(--i, 0) * 46ms + 230ms);
+}
+
+/* Bridge — bars grow along the axis they measure, left to right in walk order, so
+   the chart assembles the way the balance actually moved. Anchors and additions rise
+   from their base; a reduction hangs DOWN from its top edge, which is the whole
+   visual idea of the sign carrying the meaning. */
+.vsection--revealed .bridge__bar rect {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: vgrowY 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--chart-in) + var(--i, 0) * 60ms);
+}
+
+.vsection--revealed .bridge__bar--cut rect {
+  transform-origin: top center;
+}
+
+/* The step-lines trace between bars, each just after the bar it leaves. */
+.vsection--revealed .bridge__step {
+  stroke-dasharray: 60;
+  animation: vdraw 160ms linear both;
+  animation-delay: calc(var(--chart-in) + var(--i, 0) * 60ms + 300ms);
+}
+
+.vsection--revealed .bridge__label,
+.vsection--revealed .bridge__value {
+  animation: vappear 240ms ease-out both;
+  animation-delay: calc(var(--chart-in) + var(--i, 0) * 60ms + 240ms);
 }
 
 /* The answer in words. A different kind of statement from the chart, hence the rule. */

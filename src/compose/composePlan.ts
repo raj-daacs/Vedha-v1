@@ -206,6 +206,25 @@ function showsOptionalBeats(recipe: Recipe): boolean {
   return recipe.four_question_fit === 'collapse'
 }
 
+/**
+ * WHICH BEATS ARE IN THIS PLAN — the single answer, shared with `composeView`.
+ *
+ * The plan and the view must agree about what the answer contains. The operator
+ * approves a plan of N beats and then presses "Build view"; a view that quietly
+ * carried an N+1th section would be delivering something they never approved, and
+ * an `ahead` projection is exactly the kind of thing that would slip in that way —
+ * `composeView` renders any beat a fixture covers, and nothing else would stop it.
+ *
+ * So both sides call this. Adding a fixture for a beat this excludes now renders
+ * nothing rather than smuggling a section in.
+ *
+ * (Promoted deepen answers are different, and legitimately extra: the operator adds
+ * those to the artifact themselves, after the fact.)
+ */
+export function beatsInPlan(recipe: Recipe): Beat[] {
+  return recipe.beats.filter((beat) => !beat.optional || showsOptionalBeats(recipe))
+}
+
 const CONFIDENCE_LABELS = {
   from_data: 'from data',
   directional: 'directional',
@@ -301,9 +320,7 @@ export function composePlan(
   const spine = deriveSpine(recipe.spine)
   const hasSpine = spine.length > 0
 
-  const beats = recipe.beats
-    .filter((beat) => !beat.optional || showsOptionalBeats(recipe))
-    .map((beat) => composeBeat(beat, context, options))
+  const beats = beatsInPlan(recipe).map((beat) => composeBeat(beat, context, options))
 
   return {
     // "Funnel · Flow family". Capitalising the declared family name avoids a

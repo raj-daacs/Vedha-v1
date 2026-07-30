@@ -7,8 +7,15 @@
 // which is the only way revenue grows without new sales. So the 100% line is drawn
 // as a real reference and the trough is annotated: "how deep, and did it come back".
 //
-// Segments below the line are drawn coral and above accent, so the crossing point
-// reads without consulting the axis.
+// THE LINE IS SPLIT AT THE TROUGH, not at the 100% crossing. The decay leg is coral
+// and the recovery leg accent — so the recovery reads as recovery from the moment it
+// turns, even while it is still under 100%.
+//
+// That distinction is the whole point of the atom. Colouring by position instead of
+// by direction would paint the first half of the climb out as failure, which says the
+// opposite of what's happening: a cohort going from 87% to 94% is recovering, and
+// only the axis can tell you it hasn't cleared the bar yet. Position is what the
+// dashed reference line is for; direction is what the colour is for.
 // ---------------------------------------------------------------------------
 
 import type { CSSProperties } from 'react'
@@ -34,15 +41,26 @@ export function NrrCurve({ data }: { data: NrrCurveData }) {
   const last = data.points.length - 1
   const baselineY = scale.y(data.baseline.value)
 
-  // Drawn segment by segment so each can take the colour of where it sits. A single
-  // polyline would have to pick one colour for a line whose whole story is crossing.
-  const segments = data.points.slice(1).map((point, index) => ({
+  // Clamped, so a fixture that names a trough off the end of the series still draws
+  // something sane rather than an all-one-colour line with no explanation.
+  const trough = Math.min(Math.max(data.troughIndex, 0), last)
+
+  // Drawn segment by segment so each can take its leg's colour. A single polyline
+  // would have to pick one colour for a line whose whole story is turning around.
+  // Segment `index` joins point `index` to `index + 1`, so every segment before the
+  // trough is decay and everything from it on is recovery.
+  const segments = data.points.slice(1).map((_, index) => ({
     x1: xs[index],
     y1: ys[index],
     x2: xs[index + 1],
     y2: ys[index + 1],
-    below: (data.points[index].value + point.value) / 2 < data.baseline.value,
+    leg: index < trough ? 'decay' : 'recovery',
   }))
+
+  /** The three points worth a marker: where it bottomed, where it crossed, where it got to. */
+  const marked = new Set(
+    [trough, data.crossIndex, last].filter((index): index is number => index !== undefined),
+  )
 
   return (
     <svg
@@ -74,7 +92,7 @@ export function NrrCurve({ data }: { data: NrrCurveData }) {
       {segments.map((segment, index) => (
         <line
           key={index}
-          className={`nrr__segment nrr__segment--${segment.below ? 'below' : 'above'}`}
+          className={`nrr__segment nrr__segment--${segment.leg}`}
           // Segment index, so the entrance in view.css traces left to right rather
           // than lighting every segment at once. Presentation only.
           style={{ '--i': index } as CSSProperties}
@@ -85,26 +103,30 @@ export function NrrCurve({ data }: { data: NrrCurveData }) {
         />
       ))}
 
+      {/* Dots take their leg's colour, and the three that carry the reading are drawn
+          larger. Everything else is a tick on the path. */}
       {data.points.map((point, index) => (
         <circle
           key={point.label}
-          className={`nrr__dot nrr__dot--${point.value < data.baseline.value ? 'below' : 'above'}`}
+          className={`nrr__dot nrr__dot--${index < trough ? 'decay' : 'recovery'}`}
           style={{ '--i': index } as CSSProperties}
           cx={xs[index]}
           cy={ys[index]}
-          r={index === last ? 4.5 : 2.6}
+          r={marked.has(index) ? 4.2 : 2.4}
         />
       ))}
 
+      {/* Annotations sit on the outside of the turn — below the decay leg, above the
+          recovery — so neither one lands on top of the line it describes. */}
       {data.annotations?.map((annotation) => {
         const index = Math.min(Math.max(annotation.pointIndex, 0), last)
-        const above = data.points[index].value < data.baseline.value
+        const onDecay = index <= trough
         return (
           <text
             key={annotation.text}
-            className="nrr__annotation"
+            className={`nrr__annotation nrr__annotation--${onDecay ? 'decay' : 'recovery'}`}
             x={xs[index]}
-            y={ys[index] + (above ? 20 : -14)}
+            y={ys[index] + (onDecay ? 20 : -13)}
             textAnchor={index === 0 ? 'start' : index === last ? 'end' : 'middle'}
           >
             {annotation.text}

@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PanelSpec } from '../../compose/viewModels'
+import { Bridge } from './Bridge'
 import { CohortMatrix } from './CohortMatrix'
 import { Funnel } from './Funnel'
 import { NrrCurve } from './NrrCurve'
@@ -37,6 +38,8 @@ function AtomBody({ spec }: { spec: PanelSpec }) {
       return <StickinessTrend data={spec.data} />
     case 'nrrCurve':
       return <NrrCurve data={spec.data} />
+    case 'bridge':
+      return <Bridge data={spec.data} />
   }
 }
 

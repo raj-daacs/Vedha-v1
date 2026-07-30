@@ -18,7 +18,7 @@
 // plan-deep recipe gets its placeholder without a list of built views anywhere.
 // ---------------------------------------------------------------------------
 
-import { deriveSpine, judgedAgainstBenchmark, resolveTitle } from './composePlan'
+import { beatsInPlan, deriveSpine, judgedAgainstBenchmark, resolveTitle } from './composePlan'
 import type { ComposeContext } from './models'
 import { bindingsFor, resolveTemplate } from './templates'
 import type { ViewModel, ViewSection } from './viewModels'
@@ -64,9 +64,15 @@ export function composeView(
   const vsBenchmark = judgedAgainstBenchmark(recipe)
 
   // Beat order comes from the recipe; a beat with no fixture simply isn't rendered.
-  // That's what keeps the scorecard's two thin optional beats out of the view
-  // without anything here knowing they're optional, or why.
-  const rendered = recipe.beats.filter((beat) => fixture.beats[beat.id] !== undefined)
+  //
+  // Gated on `beatsInPlan` as well, so the view can only ever contain beats the plan
+  // actually offered. Two independent conditions, and they say different things: the
+  // plan decides what this shape's answer CONSISTS of, the fixture decides what has
+  // been BUILT. A beat needs both.
+  const inPlan = new Set(beatsInPlan(recipe).map((beat) => beat.id))
+  const rendered = recipe.beats.filter(
+    (beat) => inPlan.has(beat.id) && fixture.beats[beat.id] !== undefined,
+  )
 
   const sections: ViewSection[] = rendered.map((beat) => ({
     id: beat.id,

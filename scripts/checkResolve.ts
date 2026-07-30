@@ -7,7 +7,7 @@
 // should produce, plus the structural invariants that no amount of case-writing
 // would catch.
 //
-// Six sections:
+// Seven sections:
 //
 //   A  · THE SPEC'S OWN CASES. The eleven from vedha_scope_resolution §06,
 //        asserting the resolved value AND its source. These are the acceptance
@@ -21,6 +21,7 @@
 //        trigger.shape — the fields the current schema no longer declares.
 //   E  · displayLabel honesty, checked through subjectOf rather than structurally.
 //   F  · View fixtures address real beats.
+//   G  · Every bridge reconciles: opening + Σ deltas === closing.
 //
 // NOTE ON "NO MATCH". The old table had `expect: null` cases — asks the matcher
 // should refuse. The resolver has no such answer: the operator always has a scope,
@@ -414,13 +415,64 @@ console.log(`\n      plan-deep pairs (real plan, placeholder view): ${planDeep.l
 for (const pair of planDeep) console.log(`        ${pair}`)
 
 // ===========================================================================
+// G · Every bridge reconciles
+//
+// A waterfall whose bars don't land on its closing anchor is a lying chart, and it is
+// not a thing the eye catches — the bars are all individually plausible and the gap
+// reads as a rendering quirk. So: opening + Σ deltas must equal closing, exactly.
+//
+// The fixtures compute the closing from the movements, so this can only fail if
+// someone later types one in by hand. Which is exactly when it needs to fail.
+// ===========================================================================
+
+console.log('\n=== G · every bridge reconciles ===\n')
+
+let bridgeCount = 0
+
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  for (const [beatId, beat] of Object.entries(fixture.beats)) {
+    for (const panel of beat.panels) {
+      if (panel.atom !== 'bridge') continue
+      bridgeCount++
+      const { opening, closing, movements, projected } = panel.data
+      const sum = movements.reduce((total, m) => total + m.delta, opening.value)
+      // Compared at the display precision: the chart shows two decimals, so agreement
+      // to two decimals is agreement as far as anyone reading it can tell.
+      const balanced = Math.round(sum * 100) === Math.round(closing.value * 100)
+      const gross = movements.filter((m) => m.delta > 0).reduce((t, m) => t + m.delta, 0)
+      const cut = movements.filter((m) => m.delta < 0).reduce((t, m) => t + m.delta, 0)
+
+      const label =
+        `${key} · ${beatId} — ${opening.value.toFixed(2)} ` +
+        `+${gross.toFixed(2)} ${cut.toFixed(2)} → ${closing.value.toFixed(2)}` +
+        (projected ? `  (projected ${projected.value.toFixed(2)})` : '')
+
+      if (balanced) pass(label)
+      else {
+        fail(label)
+        console.log(
+          `        bars sum to ${sum.toFixed(2)} but the closing anchor says ` +
+            `${closing.value.toFixed(2)} — the chart would draw a gap it can't explain.`,
+        )
+      }
+
+      // A bridge with no movements is a pair of anchors and no story; almost certainly
+      // an unfinished fixture rather than a deliberate one.
+      if (movements.length === 0) fail(`${key} · ${beatId} — bridge has no movements`)
+    }
+  }
+}
+
+console.log(`\n      ${bridgeCount} bridge panels checked`)
+
+// ===========================================================================
 
 const total = SPEC_CASES.length + ROUTE_CASES.length + WORKFLOWS.length * 2
 console.log(
   failures === 0
     ? `\nALL CHECKS PASS — ${SPEC_CASES.length} spec cases · ${ROUTE_CASES.length} routing · ` +
       `${WORKFLOWS.length * 2} prompt chips · ` +
-      `invariants D–F  (${total} cases)`
+      `invariants D–G  (${total} cases)`
     : `\n${failures} FAILED`,
 )
 
