@@ -17,16 +17,21 @@
 // ordering is meaningful.
 // ---------------------------------------------------------------------------
 
-import type { Level, Output, Period, Workspace } from '../data/workspaces'
+import type { Altitude, Output, Period, WorkflowName } from '../data/recipe_schema'
 
 /**
- * Everything the operator has told us that isn't the recipe: where they're
- * standing, at what altitude, over what span, and what they asked.
+ * Everything the operator has told us that isn't the recipe: which workflow they're
+ * standing in, at what altitude, over what span, and what they asked.
+ *
+ * These are the RESOLVED values, not the raw picks — by the time a composer sees a
+ * context, the resolver has already merged what was picked with what was typed. How
+ * each one was arrived at (picked · text · default) is carried separately, so a
+ * composer that only needs the value can't accidentally depend on its provenance.
  */
 export interface ComposeContext {
   intent: string
-  workspace: Workspace
-  level: Level
+  workflow: WorkflowName
+  altitude: Altitude
   output: Output
   period: Period
 }
@@ -76,7 +81,7 @@ export interface SpineNode {
 
 /**
  * `in-plan` — this beat set actually reads it.
- * `available` — the workspace has it; this plan doesn't use it.
+ * `available` — the workflow has it; this plan doesn't use it.
  * `add`      — an affordance, not a thing (the dashed "＋ plan" chip).
  */
 export type ChipState = 'in-plan' | 'available' | 'add'
@@ -127,7 +132,7 @@ export interface BeatModel {
    * editing UI it wasn't given.
    *
    * `reads` is the full candidate set — what the recipe declared for this beat plus
-   * what the workspace's semantic model could offer it — each flagged in or out of
+   * what the workflow's semantic model could offer it — each flagged in or out of
    * scope. Toggling one recomposes this beat's `detail` and nothing else, which is
    * the whole point of Edit B.
    */

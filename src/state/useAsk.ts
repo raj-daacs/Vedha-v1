@@ -10,12 +10,12 @@
 
 import { useCallback } from 'react'
 import { selectRecipe } from '../data/selectRecipe'
-import type { Period, Workspace } from '../data/workspaces'
+import type { Period, WorkflowName } from '../data/recipe_schema'
 import { useApp } from './AppContext'
 
 /** Context an ask may bring with it, overriding what's currently set. */
 export interface AskContext {
-  workspace?: Workspace
+  workflow?: WorkflowName
   period?: Period
 }
 
@@ -27,20 +27,20 @@ export function useAsk() {
       const asked = intent.trim()
       if (!asked) return
 
-      // Context an example card carries wins over the current setting — the card is
+      // Context a prompt chip carries wins over the current setting — the chip is
       // stating its own context, not borrowing yours. Otherwise an ask that says
       // "this month" would be planned against whatever period happened to be set.
-      const inWorkspace = context.workspace ?? state.workspace
-      const { recipe } = selectRecipe(asked, inWorkspace)
+      const inWorkflow = context.workflow ?? state.workflow
+      const { recipe } = selectRecipe(asked, inWorkflow)
 
       dispatch({
         type: 'SUBMIT_INTENT',
         intent: asked,
         recipeId: recipe?.id ?? null,
-        workspace: context.workspace,
+        workflow: context.workflow,
         period: context.period,
       })
     },
-    [dispatch, state.workspace],
+    [dispatch, state.workflow],
   )
 }

@@ -10,6 +10,7 @@
 
 import { useCallback } from 'react'
 import { selectRecipe } from '../data/selectRecipe'
+import type { RecipeId } from '../data/recipe_schema'
 import { useApp } from './AppContext'
 
 export function useReplan() {
@@ -19,20 +20,20 @@ export function useReplan() {
     /**
      * @param intent   the revised ask
      * @param override a recipe picked explicitly from the eligible list. Still inside
-     *                 the workspace's own set, so the standpoint rule holds — this
+     *                 the workflow's own set, so the standpoint rule holds — this
      *                 chooses *between* eligible shapes, it can't escape them.
      */
-    (intent: string, override?: string | null) => {
+    (intent: string, override?: RecipeId | null) => {
       const asked = intent.trim()
       if (!asked) return
 
-      const recipeId = override ?? selectRecipe(asked, state.workspace).recipe?.id ?? null
+      const recipeId = override ?? selectRecipe(asked, state.workflow).recipe?.id ?? null
 
       // SUBMIT_INTENT already resets the build and clears the old plan's edits, and
       // routes to the thread. If the revision resolves to nothing it lands on the
       // ask-again state instead — which is the honest outcome, not a failure.
       dispatch({ type: 'SUBMIT_INTENT', intent: asked, recipeId })
     },
-    [dispatch, state.workspace],
+    [dispatch, state.workflow],
   )
 }

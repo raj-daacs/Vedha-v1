@@ -5,21 +5,21 @@
 // from `recipeId` + context, so there is exactly one source of truth.
 // ---------------------------------------------------------------------------
 
-import {
-  DEFAULT_LEVEL,
-  DEFAULT_OUTPUT,
-  DEFAULT_PERIOD,
-  DEFAULT_WORKSPACE,
-} from '../data/workspaces'
+import { getWorkflow } from '../data/recipes'
+import { DEFAULT_ALTITUDE, DEFAULT_WORKFLOW } from '../data/scope'
 import type { Action, AppState } from './types'
+
+// Output and period have no global default any more — a default only means something
+// relative to a standpoint, so both are seeded from whichever workflow is selected.
+const DEFAULT_SCOPE = getWorkflow(DEFAULT_WORKFLOW)
 
 export const initialState: AppState = {
   screen: 'entry',
   rail: 'new',
-  workspace: DEFAULT_WORKSPACE,
-  level: DEFAULT_LEVEL,
-  output: DEFAULT_OUTPUT,
-  period: DEFAULT_PERIOD,
+  workflow: DEFAULT_WORKFLOW,
+  altitude: DEFAULT_ALTITUDE,
+  output: DEFAULT_SCOPE.outputDefault,
+  period: DEFAULT_SCOPE.periodDefault,
   draftIntent: '',
   submittedIntent: '',
   // The design file ships the picker open to document that state; at rest it's closed.
@@ -56,8 +56,8 @@ const CLEAN_PLAN = {
 /** The context the operator sets. Survives "New" — where you stand isn't the question. */
 function contextOf(state: AppState) {
   return {
-    workspace: state.workspace,
-    level: state.level,
+    workflow: state.workflow,
+    altitude: state.altitude,
     output: state.output,
     period: state.period,
   }
@@ -79,11 +79,11 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'TOGGLE_PICKER':
       return { ...state, pickerOpen: !state.pickerOpen }
 
-    case 'SET_WORKSPACE':
-      return { ...state, workspace: action.workspace }
+    case 'SET_WORKFLOW':
+      return { ...state, workflow: action.workflow }
 
-    case 'SET_LEVEL':
-      return { ...state, level: action.level }
+    case 'SET_ALTITUDE':
+      return { ...state, altitude: action.altitude }
 
     case 'SET_OUTPUT':
       return { ...state, output: action.output }
@@ -100,7 +100,7 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!action.recipeId) {
         return {
           ...state,
-          workspace: action.workspace ?? state.workspace,
+          workflow: action.workflow ?? state.workflow,
           period: action.period ?? state.period,
           draftIntent: intent,
           pickerOpen: false,
@@ -112,7 +112,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         rail: 'new',
         screen: 'thread',
-        workspace: action.workspace ?? state.workspace,
+        workflow: action.workflow ?? state.workflow,
         period: action.period ?? state.period,
         draftIntent: intent,
         submittedIntent: intent,

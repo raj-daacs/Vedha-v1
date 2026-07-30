@@ -1,442 +1,219 @@
-// recipes.ts
-// ---------------------------------------------------------------------------
-// The recipe book — four composition recipes, derived from report validation
-// (board rows 1–4). Transcribed field-for-field from `vedha_recipes.yaml`.
-//
-// A recipe = the plan skeleton; routing (fills_from -> RS nodes) = the flesh.
-//
-// TRANSCRIPTION RULE: this file is data, not design. If it disagrees with the
-// YAML, the YAML wins. Anything invented for the prototype lives BELOW the
-// recipe array (see WORKSPACE_RECIPES) so the port stays auditable.
-// The one exception is `displayLabel`, an explicit extension — see recipeTypes.ts.
-// ---------------------------------------------------------------------------
+// recipes.ts — Vedha recipe layer · data. Consumes recipe_schema.ts.
+// The single source of truth the prototype reads: the five recipes, the eight-workflow
+// scope catalog (eligibility · primary · defaults · prompt chips), and resolver cue tables.
 
-import type { Recipe, RecipeBook } from './recipeTypes'
-import type { Workspace } from './workspaces'
+import type {
+  Recipe, RecipeBook, RecipeId, WorkflowConfig, WorkflowName, Altitude, Output,
+} from './recipe_schema';
 
+// =====================================================================
+// 1 · THE FIVE RECIPES
+// =====================================================================
 export const RECIPES: RecipeBook = [
   {
     id: 'funnel_conversion',
     name: 'Funnel (conversion)',
     family: 'flow',
-    spine: {
-      family: 'flow',
-      rendered_as: 'funnel',
-      input: 'new users / leads / visitors',
-      work: 'the onboarding or acquisition funnel steps',
-      output: 'activated users / new customers',
-    },
+    spine: { input: 'entrants', work: 'funnel steps', output: 'converted' },
     trigger: {
-      shape: ['funnel'],
-      goal_metric_kind: 'rate',
-      intent_signals: [
-        'where are we losing people',
-        'conversion / drop-off',
-        'onboarding / activation trend',
-        'which step',
-        'funnel',
-        // ADDED — not yet in vedha_recipes.yaml; sync back when it's next edited.
-        // Disambiguation signals, needed now that Activation offers a choice
-        // between the funnel and the cohort shape. Some overlap alternates inside
-        // the compound signals above ('conversion', 'drop-off', 'onboarding');
-        // overlapping hits only add score to this same recipe, so they can't
-        // skew a comparison against another one.
-        'conversion',
-        'losing people',
-        'where we lose',
-        'drop-off',
-        'activate',
-        'onboarding',
-      ],
+      shape: 'funnel',
+      goal_metric_kind: 'rate / conversion',
+      intent_signals: ['funnel', 'conversion', 'losing people', 'where we lose', 'drop-off', 'activate', 'onboarding', 'top of funnel'],
     },
-    four_question_fit: 'hold',
-    narration_note:
-      'Four questions hold cleanly — the funnel is a flow and each question maps to a stage of it. This is the reference case for the flow family.',
     beats: [
-      {
-        id: 'stand_trend',
-        category: 'stand',
-        question: '{goal_metric} across the {period}',
-        reads: ['{goal_metric}', 'cohort / period', 'target'],
-        builds: 'Trend line + headline number vs target',
-        atoms: ['trend', 'headline_vs_target'],
-        fills_from: ['RS1_orient', 'RS4_temporal'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'why_step',
-        category: 'why',
-        question: 'Which step is leaking?',
-        reads: ['funnel steps', 'step conversions'],
-        builds: 'Full funnel, worst step marked',
-        atoms: ['funnel', 'step_conversion'],
-        fills_from: ['RS8_shape_native', 'RS2_structural'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'why_segment',
-        category: 'why',
-        question: 'Which segment is worst at that step?',
-        reads: ['the leaking step', 'ICP / segment dimension'],
-        builds: 'Ranked bars vs the average',
-        atoms: ['ranked_comparison'],
-        // RS3/RS5 = the dimensional route CF-1 says orient can't reach.
-        // The recipe hard-composes this beat, so it's reachable here.
-        fills_from: ['RS3_dimensional', 'RS5_dimensional_compare'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'ahead_projection',
-        category: 'ahead',
-        question: 'Projected lift if the worst step is fixed',
-        reads: ['worst-step conversion', '{goal_metric}'],
-        builds: 'Projection of the goal metric under a fixed-step scenario',
-        atoms: ['projection'],
-        fills_from: ['RS7_forecast'],
-        confidence: 'directional',
-        optional: true,
-        include_when: 'user asks what-if / forecast, or the leak is actionable',
-      },
+      { id: 'fc_stand', category: 'stand', question: 'Where the rate stands vs target', reads: ['goal rate', 'target'], builds: 'trend + headline vs target', atoms: ['Trend'], confidence: 'from_data' },
+      { id: 'fc_why_step', category: 'why', question: 'Which step leaks most?', reads: ['funnel steps'], builds: 'full funnel, worst step marked', atoms: ['Funnel'], confidence: 'from_data' },
+      { id: 'fc_why_seg', category: 'why', question: 'Which segment is worst at that step?', reads: ['leak step', 'segment'], builds: 'ranked segment bars', atoms: ['RankedBars'], fills_from: ['RS3', 'RS5'], confidence: 'from_data' },
+      { id: 'fc_ahead', category: 'ahead', question: 'Projected rate if the leak is fixed', reads: ['leak step', 'elasticity'], builds: 'projection', atoms: ['Trend'], confidence: 'directional', optional: true },
     ],
+    four_question_fit: 'hold',
+    narration_note: 'All four questions hold their own beat, in order.',
     producibility: 'yes',
     requires: [],
-    validated_by: 'Row 2 · Top of Funnel (+ Activation)',
   },
-
-  {
-    id: 'movement_bridge',
-    name: 'Movement (bridge / waterfall)',
-    family: 'flow',
-    spine: {
-      family: 'flow',
-      rendered_as: 'bridge',
-      input: 'opening balance (ARR / MRR / seats)',
-      work: 'new + expansion − contraction − churn',
-      output: 'closing balance',
-    },
-    trigger: {
-      shape: ['bridge'],
-      goal_metric_kind: 'movement',
-      intent_signals: [
-        'ARR build / MRR movement',
-        'what moved / net new',
-        'bridge / waterfall',
-        'opening to closing',
-        'between two periods',
-      ],
-    },
-    four_question_fit: 'bend',
-    narration_note:
-      'Four questions ride ON the bridge rather than replace it: stand = closing, why = which component moved, ahead = forecast off the build, do = which lever.',
-    beats: [
-      {
-        id: 'stand_movement',
-        category: 'stand',
-        question: 'How {balance} moved from opening to closing',
-        reads: ['opening / closing balance', 'the ± components'],
-        builds: 'Waterfall (opening → +adds − losses → closing) + net + NRR/GRR',
-        atoms: ['waterfall', 'component_ratio', 'nrr_grr'],
-        fills_from: ['RS1_orient', 'RS2_structural'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'why_component',
-        category: 'why',
-        question: 'Which component moved the balance most?',
-        reads: ['the ± components', 'prior-period components'],
-        builds: 'Component decomposition + which lever improved or worsened',
-        atoms: ['component_ratio', 'trend'],
-        fills_from: ['RS2_structural', 'RS4_temporal'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'ahead_forecast',
-        category: 'ahead',
-        question: 'Projected closing next {period} on current run-rate',
-        reads: ['component run-rates', 'opening balance'],
-        builds: 'Forecast closing from the build components',
-        atoms: ['projection'],
-        fills_from: ['RS7_forecast'],
-        confidence: 'directional',
-        optional: true,
-        include_when: "leadership / board ritual, or user asks what's ahead",
-      },
-      {
-        id: 'do_lever',
-        category: 'do',
-        question: 'Which lever to pull',
-        reads: ['worst-moving component', 'its owning space'],
-        builds: 'The binding component and where it routes (space handoff)',
-        atoms: ['narration'],
-        fills_from: ['RS9_focus'],
-        confidence: 'from_data',
-        optional: true,
-        include_when: 'a component is clearly binding',
-      },
-    ],
-    producibility: 'needs_atom',
-    requires: [
-      'GAP-A1 bridge / waterfall atom',
-      'GAP-A2 component-ratio & NRR/GRR',
-      'GAP-J1 cross-space join',
-    ],
-    validated_by: 'Row 1 · ARR Build',
-  },
-
   {
     id: 'cohort_longitudinal',
     name: 'Cohort (longitudinal)',
     family: 'flow',
-    spine: {
-      family: 'flow',
-      rendered_as: 'cohort',
-      input: "each cohort's starting base",
-      work: 'retain + expand − contract − churn over time',
-      output: 'base at month N',
-    },
+    spine: { input: 'cohort base', work: 'retain +expand −contract −churn over age', output: 'base at age N' },
     trigger: {
-      shape: ['cohort'],
-      goal_metric_kind: 'retention',
-      intent_signals: [
-        'retention / NRR',
-        'cohort / by signup month',
-        'are cohorts improving',
-        'decay / churn over time',
-        // ADDED — not yet in vedha_recipes.yaml; sync back when it's next edited.
-        // The cohort shape is now selectable from Activation as well as Retention,
-        // so it needs signals that name it directly rather than only via retention.
-        'cohort',
-        'by signup week',
-        'maturing',
-        'retention curve',
-        'nrr by age',
-        'decay',
-      ],
+      shape: 'cohort',
+      goal_metric_kind: 'rate over cohort age',
+      intent_signals: ['cohort', 'by signup week', 'maturing', 'retention curve', 'nrr by age', 'decay'],
     },
-    four_question_fit: 'bend',
-    narration_note:
-      'Four questions ride on the matrix: stand = current NRR curve, why = which cohorts / where decay, ahead = project the curve, do = intervene at steepest decay.',
     beats: [
-      {
-        id: 'stand_curve',
-        category: 'stand',
-        question: 'Where net revenue retention stands over cohort age',
-        reads: ['revenue retention / NRR', 'cohort age'],
-        builds: 'Net-retention curve vs the 100% line',
-        atoms: ['retention_curve'],
-        fills_from: ['RS1_orient', 'RS4_temporal'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'why_matrix',
-        category: 'why',
-        question: 'Which cohorts decay, and where?',
-        reads: ['cohort × age matrix', 'segment / plan'],
-        builds: 'Cohort matrix (left-adjusted; right-adjusted for business-wide shifts)',
-        atoms: ['cohort_matrix', 'cohort_matrix_right_adjusted'],
-        fills_from: ['RS8_shape_native', 'RS3_dimensional'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'ahead_projection',
-        category: 'ahead',
-        question: 'Projected retention for immature cohorts',
-        reads: ['mature-cohort curve', 'immature cohort ages'],
-        builds: 'Projection of immature cohorts along the mature curve',
-        atoms: ['projection'],
-        fills_from: ['RS7_forecast'],
-        confidence: 'directional',
-        optional: true,
-        include_when: "recent cohorts are immature, or user asks what's ahead",
-      },
-      {
-        id: 'do_intervene',
-        category: 'do',
-        question: 'Where to intervene',
-        reads: ['steepest-decay age / segment'],
-        builds: 'The age / segment with the steepest decay',
-        atoms: ['narration'],
-        fills_from: ['RS9_focus'],
-        confidence: 'from_data',
-        optional: true,
-        include_when: 'a decay point is clearly worst',
-      },
+      { id: 'co_stand', category: 'stand', question: 'Where the metric stands over cohort age', reads: ['metric', 'cohort age'], builds: 'curve vs baseline', atoms: ['Trend', 'NrrCurve'], confidence: 'from_data' },
+      { id: 'co_why', category: 'why', question: 'Which cohorts decay, and where?', reads: ['cohort × age matrix'], builds: 'cohort matrix', atoms: ['CohortMatrix'], confidence: 'from_data' },
+      { id: 'co_ahead', category: 'ahead', question: 'Projected mature value', reads: ['immature cohorts'], builds: 'projection', atoms: ['NrrCurve'], confidence: 'directional', optional: true },
     ],
+    four_question_fit: 'bend',
+    narration_note: 'Questions bend to a stock shape — "why" becomes "which cohort".',
     producibility: 'needs_orientation',
-    requires: [
-      'GAP-A3 right-adjusted cohort orientation',
-      'GAP-A4 net-retention curve (partial)',
-    ],
-    validated_by: 'Row 3 · Cohort Analysis',
+    requires: ['GAP-A3', 'GAP-A4'],
   },
-
   {
     id: 'state_scorecard',
     name: 'State scorecard (ratio / stickiness)',
     family: 'state',
-    // EXTENSION: the operator's word for this subject, and the one workspace where
-    // that word is true. Listed in WORKSPACE_RECIPES under Retention only, so the
-    // label can never render somewhere it would contradict the context pill.
+    spine: {}, // none — the collapse falls out of an absent spine
+    trigger: {
+      shape: 'scorecard',
+      goal_metric_kind: 'ratio / level vs benchmark',
+      intent_signals: ['sticky', 'stickiness', 'engagement', 'health', 'how are we doing', 'where do we stand', 'status'],
+    },
+    beats: [
+      { id: 'ss_stand_level', category: 'stand', question: 'Where it stands vs benchmark', reads: ['levels', 'ratios', 'benchmark'], builds: 'scorecard of levels + ratios, each flagged', atoms: ['Scorecard'], confidence: 'from_data' },
+      { id: 'ss_stand_trend', category: 'stand', question: 'Holding, improving, or drifting?', reads: ['ratio over time', 'benchmark line'], builds: 'ratio trend vs benchmark', atoms: ['StickinessTrend'], confidence: 'from_data' },
+      { id: 'ss_why', category: 'why', question: "What's moving the ratio?", reads: ['drivers'], builds: 'thin — drivers of the ratio', atoms: [], confidence: 'directional', optional: true },
+      { id: 'ss_ahead', category: 'ahead', question: 'What this predicts', reads: ['leading indicator'], builds: 'thin — leading-indicator read', atoms: [], confidence: 'directional', optional: true },
+    ],
+    four_question_fit: 'collapse',
+    narration_note: 'Questions collapse toward "stand vs benchmark"; why/ahead go thin — the thinning is the finding.',
+    producibility: 'needs_atom',
+    requires: ['GAP-A5', 'GAP-F1'],
     displayLabel: 'Product engagement',
     displayLabelWorkspace: 'Retention',
-    spine: {
-      family: 'state',
-      rendered_as: 'scorecard',
-      state: 'engagement — levels (DAU/WAU/MAU) and stickiness ratios',
-      benchmark: 'DAU/MAU ≥ 20% (B2B) and other per-ratio benchmarks',
-    },
-    trigger: {
-      shape: ['scorecard'],
-      goal_metric_kind: 'ratio',
-      intent_signals: [
-        'engagement / stickiness',
-        'DAU/MAU / MAU WAU DAU',
-        'how active / are we sticky',
-        'product health',
-        // ADDED — not yet in vedha_recipes.yaml; sync back when the YAML is next edited.
-        //
-        // A vague "where do we stand" is a STATE question: the operator wants levels
-        // against a bar, not a specific analysis. Without these, such asks fell
-        // through to whichever recipe an incidental word happened to brush — "this
-        // month status" resolved to the cohort shape on the strength of "month"
-        // alone. The state family is the right home for the generic reading, since
-        // its four questions already collapse toward "where do we stand".
-        // The bare terms matter: 'are we sticky' only fires on that exact word
-        // order, so "how sticky are we" used to match nothing at all.
-        'sticky',
-        'stickiness',
-        'engagement',
-        'health',
-        'how are we doing',
-        'where do we stand',
-        'status',
-      ],
-    },
-    four_question_fit: 'collapse',
-    narration_note:
-      'No input→work→output. The four questions collapse toward "where do we stand vs benchmark"; why/ahead/do go thin, and "ahead" is special — the state PREDICTS a downstream flow (retention) rather than being forecast itself.',
-    beats: [
-      {
-        id: 'stand_scorecard',
-        category: 'stand',
-        question: 'Where engagement stands vs benchmark',
-        reads: ['levels (DAU/WAU/MAU)', 'stickiness ratios', 'benchmarks'],
-        builds: 'Scorecard of levels + ratios, each flagged vs its benchmark',
-        atoms: ['scorecard', 'ratio_vs_benchmark'],
-        fills_from: ['RS1_orient', 'A4_silence'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'stand_trend',
-        category: 'stand',
-        question: 'Is stickiness holding, improving, or drifting?',
-        reads: ['stickiness ratio over time', 'benchmark line'],
-        builds: 'Ratio trend vs the benchmark line',
-        atoms: ['trend', 'ratio_vs_benchmark'],
-        fills_from: ['RS4_temporal'],
-        confidence: 'from_data',
-        optional: false,
-      },
-      {
-        id: 'why_decompose',
-        category: 'why',
-        question: "What's moving the ratio?",
-        reads: ['ratio by segment / feature'],
-        builds: 'Ranked contribution by segment or feature',
-        atoms: ['ranked_comparison'],
-        fills_from: ['RS3_dimensional'],
-        confidence: 'from_data',
-        optional: true,
-        include_when: 'the ratio has meaningfully moved',
-      },
-      {
-        id: 'ahead_leading',
-        category: 'ahead',
-        question: 'What this predicts for retention',
-        reads: ['stickiness now', 'historical stickiness → retention link'],
-        builds: 'Leading-indicator read: engagement now → retention later',
-        atoms: ['leading_indicator_link'],
-        // F = leading-indicator route CF-7 says orient can't reach; recipe composes it.
-        fills_from: ['RS7_forecast', 'F_leading_indicator'],
-        confidence: 'directional',
-        optional: true,
-        include_when: 'a stickiness → retention relationship exists in the data',
-      },
-    ],
-    producibility: 'needs_atom',
-    requires: ['GAP-A5 ratio-vs-benchmark scorecard atom', 'GAP-F1 leading-indicator link'],
-    validated_by: 'Row 4 · Product Engagement',
   },
-]
+  {
+    id: 'movement_bridge',
+    name: 'Movement (bridge / waterfall)',
+    family: 'flow',
+    spine: { input: 'opening balance', work: '+adds −reductions', output: 'closing balance' },
+    trigger: {
+      shape: 'bridge',
+      goal_metric_kind: 'balance movement',
+      intent_signals: ['bridge', 'waterfall', 'arr build', 'mrr movement', 'net new', 'how did', 'move', 'expansion', 'contraction'],
+    },
+    beats: [
+      { id: 'mb_stand', category: 'stand', question: 'Where the balance moved, start to end', reads: ['opening balance', 'closing balance'], builds: 'waterfall', atoms: ['Bridge'], confidence: 'from_data' },
+      { id: 'mb_why', category: 'why', question: 'Which components drove the move?', reads: ['bridge components'], builds: 'component bars', atoms: ['Bridge'], confidence: 'from_data' },
+      { id: 'mb_ahead', category: 'ahead', question: 'Projected next-period balance', reads: ['run-rate'], builds: 'projection', atoms: ['Bridge'], confidence: 'directional', optional: true },
+    ],
+    four_question_fit: 'bend',
+    narration_note: 'Questions bend to a movement shape — "why" becomes "which component".',
+    producibility: 'needs_atom',
+    requires: ['GAP-A1', 'GAP-A2', 'GAP-J1'],
+  },
+  {
+    id: 'price_sensitivity',
+    name: 'Price sensitivity (elasticity / response)',
+    family: 'response',
+    spine: { lever: 'price / packaging', response: 'revenue under WTP', constraint: 'churn risk' },
+    trigger: {
+      shape: 'sensitivity',
+      goal_metric_kind: 'lever / price',
+      intent_signals: ['price', 'pricing', 'elasticity', 'willingness to pay', 'wtp', 'discount', 'raise price', 'packaging'],
+    },
+    beats: [
+      { id: 'ps_stand', category: 'stand', question: 'Where ARPU & price realisation stand', reads: ['ARPU', 'list price', 'realized price'], builds: 'price scorecard', atoms: ['Scorecard'], confidence: 'from_data' },
+      { id: 'ps_why', category: 'why', question: 'How does revenue respond to price?', reads: ['elasticity', 'WTP'], builds: 'response / elasticity curve', atoms: ['ResponseCurve'], confidence: 'directional' },
+      { id: 'ps_ahead', category: 'ahead', question: 'Revenue at candidate price points', reads: ['response curve'], builds: 'projection at price points', atoms: ['ResponseCurve'], confidence: 'directional' },
+      { id: 'ps_do', category: 'do', question: 'Recommended move + expected Δrevenue, churn risk', reads: ['optimum', 'constraint'], builds: 'recommendation', atoms: ['Recommendation'], confidence: 'directional' },
+    ],
+    four_question_fit: 'extend',
+    narration_note: 'Questions extend toward "what do we do" — the recommendation is the native output.',
+    producibility: 'needs_atom',
+    requires: ['CF-10'],
+  },
+];
 
-// ---------------------------------------------------------------------------
-// Lookups
-// ---------------------------------------------------------------------------
-
-export type RecipeId = (typeof RECIPES)[number]['id']
-
-export const RECIPES_BY_ID: Record<string, Recipe> = Object.fromEntries(
+export const RECIPES_BY_ID = Object.fromEntries(
   RECIPES.map((r) => [r.id, r]),
-)
+) as Record<RecipeId, Recipe>;
 
-export function getRecipe(id: string): Recipe | undefined {
-  return RECIPES_BY_ID[id]
+export function getRecipe(id: RecipeId): Recipe {
+  return RECIPES_BY_ID[id];
 }
 
-/** The label to show an operator: the recipe's own word for its subject. */
-export function recipeSubject(recipe: Recipe): string {
-  return recipe.displayLabel ?? recipe.name
+// =====================================================================
+// 2 · THE SCOPE CATALOG — altitude -> workflow -> eligibility / primary / defaults
+// =====================================================================
+export const ALTITUDES: Altitude[] = ['Financial', 'Company', 'Functional'];
+
+export const WORKFLOWS: WorkflowConfig[] = [
+  {
+    name: 'P&L', level: 'Financial',
+    eligible: ['movement_bridge'], primary: 'movement_bridge',
+    outputDefault: 'review', periodDefault: 'quarter',
+    examplePrompts: ['Net profit this quarter', 'Board readout of the P&L'],
+  },
+  {
+    name: 'Revenue engine', level: 'Company',
+    eligible: ['movement_bridge'], primary: 'movement_bridge',
+    outputDefault: 'review', periodDefault: 'month',
+    examplePrompts: ['How did ARR move last quarter', 'MRR bridge, by segment'],
+  },
+  {
+    name: 'Cost & Burn', level: 'Company',
+    eligible: ['state_scorecard'], primary: 'state_scorecard',
+    outputDefault: 'review', periodDefault: 'month',
+    examplePrompts: ['Where does burn stand vs plan', 'Cost-to-serve this month'],
+  },
+  {
+    name: 'Acquisition', level: 'Functional',
+    eligible: ['funnel_conversion'], primary: 'funnel_conversion',
+    outputDefault: 'report', periodDefault: 'week',
+    examplePrompts: ['Top of funnel this month', 'Which channel is converting best'],
+  },
+  {
+    name: 'Activation', level: 'Functional',
+    eligible: ['funnel_conversion', 'cohort_longitudinal'], primary: 'funnel_conversion',
+    outputDefault: 'report', periodDefault: 'week',
+    examplePrompts: ["Activation trend, where we're losing people", 'How are signup cohorts maturing'],
+  },
+  {
+    name: 'Retention', level: 'Functional',
+    // primary = cohort (retention is the goal); engagement scorecard is the signal-triggered secondary
+    eligible: ['cohort_longitudinal', 'state_scorecard'], primary: 'cohort_longitudinal',
+    outputDefault: 'report', periodDefault: 'month',
+    examplePrompts: ['How is retention holding by cohort', 'How sticky is the product'],
+  },
+  {
+    name: 'Expansion', level: 'Functional',
+    eligible: ['movement_bridge'], primary: 'movement_bridge',
+    outputDefault: 'report', periodDefault: 'quarter',
+    examplePrompts: ['Net expansion MRR this quarter', 'Expansion vs contraction, by segment'],
+  },
+  {
+    name: 'Monetisation', level: 'Functional',
+    eligible: ['price_sensitivity'], primary: 'price_sensitivity',
+    outputDefault: 'report', periodDefault: 'quarter',
+    examplePrompts: ['Should we raise the Business tier price', 'ARPU and price realisation'],
+  },
+];
+
+export const WORKFLOWS_BY_NAME = Object.fromEntries(
+  WORKFLOWS.map((w) => [w.name, w]),
+) as Record<WorkflowName, WorkflowConfig>;
+
+export function getWorkflow(n: WorkflowName): WorkflowConfig {
+  return WORKFLOWS_BY_NAME[n];
+}
+export function workflowsForLevel(level: Altitude): WorkflowConfig[] {
+  return WORKFLOWS.filter((w) => w.level === level);
+}
+export function recipesForWorkflow(n: WorkflowName): Recipe[] {
+  return getWorkflow(n).eligible.map(getRecipe);
+}
+export function primaryRecipe(n: WorkflowName): Recipe {
+  return getRecipe(getWorkflow(n).primary);
 }
 
-// ---------------------------------------------------------------------------
-// PROTOTYPE ADDITION — not from the YAML.
-//
-// WHICH RECIPES A WORKSPACE CAN PRODUCE. This is a HARD CONSTRAINT, not a nudge:
-// the operator picks a workspace before they ask, and that choice is
-// authoritative. Free text refines *within* this set; it cannot escape it.
-//
-// Why it has to be hard. When workspace was only a scoring bonus, "show me this
-// month status" on Acquisition could resolve to the Product-engagement scorecard —
-// leaving the header saying "Product engagement", the context pill saying
-// "Acquisition", and the plan describing engagement. Three things disagreeing
-// about what the operator was looking at. A plan that contradicts its own context
-// label is worse than no plan, so an ask that names a shape this workspace doesn't
-// produce is a no-match (and `selectRecipe` reports where it *would* have matched).
-//
-// `RecipeTrigger` has no workspace field — the schema selects on report SHAPE — so
-// this lives outside the ported recipe objects and the transcription above stays
-// faithful.
-//
-// ORDER IS MEANINGFUL. First entry is the workspace's native shape and earns the
-// larger prior; later entries are plausible-but-secondary.
-//
-// NOTE ON `displayLabel`: `state_scorecard` carries `displayLabel: 'Product
-// engagement'`, so it is listed under Activation ONLY. That keeps the label
-// truthful by construction — the recipe can never be selected somewhere its own
-// name would contradict the context pill. If a future recipe carries a
-// displayLabel AND spans workspaces, that guarantee breaks and `subjectOf()` in
-// the compose layer will need to gate the label on the workspace matching.
-// ---------------------------------------------------------------------------
+// =====================================================================
+// 3 · RESOLVER CUE TABLES (Stage A reference data; the resolver itself is separate code)
+// =====================================================================
+export const OUTPUT_CUES: Record<Output, string[]> = {
+  quick_answer: ['quick', 'quick answer', 'just the number', 'one number', 'tl;dr', 'in a line'],
+  report: ['report', 'full', 'deep dive', 'break it down', 'details'],
+  review: ['review', 'pacing', 'vs last', 'since last', 'how are we tracking', 'how are we pacing'],
+  readout: ['readout', 'board', 'for the board', 'exec summary', 'presentation', 'deck'],
+};
 
-export const WORKSPACE_RECIPES: Record<Workspace, string[]> = {
-  // Leads in, qualified out. One shape, so an on-domain ask here resolves to it.
-  Acquisition: ['funnel_conversion'],
-  // Onboarding is a funnel; signup cohorts maturing over time is a cohort. Two
-  // shapes, so the text has to say which — hence the disambiguation signals above.
-  Activation: ['funnel_conversion', 'cohort_longitudinal'],
-  // Retention is longitudinal first, and it's where engagement is monitored as a
-  // state. This is the scorecard's home — see the displayLabel note above.
-  Retention: ['cohort_longitudinal', 'state_scorecard'],
-  // Expansion opens and closes on a balance; that's a bridge.
-  Expansion: ['movement_bridge'],
-  // So does revenue.
-  Monetisation: ['movement_bridge'],
-}
+// Longest-match wins; keys checked as substrings of the normalized intent.
+export const PERIOD_CUES: Record<string, string> = {
+  'this week': 'week', 'last week': 'week',
+  'this month': 'month', 'last month': 'month',
+  'this quarter': 'quarter', 'last quarter': 'quarter',
+  'this year': 'year', 'last year': 'year', 'ytd': 'year',
+  'q1': 'quarter', 'q2': 'quarter', 'q3': 'quarter', 'q4': 'quarter',
+};

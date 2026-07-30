@@ -43,6 +43,15 @@
   --purple-tint: #eceafa;
   --purple-rule: #bdb6df;
 
+  /* ---- Accent · bronze (reserved for the RESPONSE family) ---------------
+     A lever you pull — not a flow you run, not a level you watch — so it gets
+     its own accent rather than borrowing one of the other two. Values from the
+     scope-resolution spec's --resp ramp. */
+  --bronze: #b07a1e;
+  --bronze-ink: #835a12;
+  --bronze-tint: #f6eedd;
+  --bronze-rule: #ddc79b;
+
   /* ---- Status ----------------------------------------------------------- */
   --amber: #ba7517;              /* gap / attention */
   --coral: #c0483f;              /* stop / worst step */
@@ -94,12 +103,25 @@
   --app-min-h: 680px;
 }
 
-/* The state family re-points the accent aliases. Set data-family="state" on any
-   container and everything inside it goes purple. Flow needs no override. */
+/* The other two families re-point the accent aliases. Set data-family="state" or
+   "response" on any container and everything inside it follows. Flow is the default
+   and needs no override.
+
+   THIS IS THE ONLY PLACE A FAMILY NAME MAY APPEAR outside src/compose/ — and it is
+   CSS, reached through the single `data-family` attribute AppShell forwards. No
+   component is handed the family, so no component can branch on it. */
 [data-family='state'] {
   --accent: var(--purple);
   --accent-deep: var(--purple-ink);
   --accent-tint: var(--purple-tint);
   --accent-ink: var(--purple-ink);
   --accent-glow: rgba(106, 91, 208, 0.5);
+}
+
+[data-family='response'] {
+  --accent: var(--bronze);
+  --accent-deep: var(--bronze-ink);
+  --accent-tint: var(--bronze-tint);
+  --accent-ink: var(--bronze-ink);
+  --accent-glow: rgba(176, 122, 30, 0.5);
 }

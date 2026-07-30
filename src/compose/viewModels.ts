@@ -229,7 +229,7 @@ export interface ViewModel {
   /** "Product engagement — this month" — from resolveTitle, same as the thread. */
   title: string
   subtitle: string
-  /** "Activation workspace · funnel + cohort · last 13 weeks" */
+  /** "Activation workflow · funnel + cohort · last 13 weeks" */
   meta: string
   /** Computed from the rendered beats' confidence, never asserted. */
   confidence: string

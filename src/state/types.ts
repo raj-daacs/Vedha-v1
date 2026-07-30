@@ -12,7 +12,13 @@
 // layer, so there is exactly one source of truth and no cache to invalidate.
 // ---------------------------------------------------------------------------
 
-import type { Level, Output, Period, Workspace } from '../data/workspaces'
+import type {
+  Altitude,
+  Output,
+  Period,
+  RecipeId,
+  WorkflowName,
+} from '../data/recipe_schema'
 
 /** The three stages of the core loop. */
 export type Screen = 'entry' | 'thread' | 'view'
@@ -25,8 +31,8 @@ export interface AppState {
   rail: RailKey
 
   /** The context the operator has set — what the Entry chips and context bar render. */
-  workspace: Workspace
-  level: Level
+  workflow: WorkflowName
+  altitude: Altitude
   output: Output
   period: Period
 
@@ -35,11 +41,11 @@ export interface AppState {
   /** What was actually asked. Empty until SUBMIT_INTENT. */
   submittedIntent: string
 
-  /** The in-panel Workspace/Level/Output/Period picker. */
+  /** The in-panel Workflow/Altitude/Output/Period picker. */
   pickerOpen: boolean
 
-  /** The recipe `selectRecipe` chose for the submitted ask. Null before any ask. */
-  recipeId: string | null
+  /** The recipe the submitted ask resolved to. Null before any ask. */
+  recipeId: RecipeId | null
 
   /**
    * How far the narrated build has resolved: -1 idle, 0..n-1 the active step,
@@ -84,7 +90,7 @@ export interface AppState {
 
   /**
    * EDIT A — the intent/scope modal is open. Coarse edits (revise the ask, change
-   * workspace or period) that may re-select the recipe and re-compose everything.
+   * workflow or period) that may re-resolve the recipe and re-compose everything.
    */
   editA: boolean
 
@@ -110,8 +116,8 @@ export type Action =
   /** Every keystroke in the ask field. */
   | { type: 'SET_DRAFT'; value: string }
   | { type: 'TOGGLE_PICKER' }
-  | { type: 'SET_WORKSPACE'; workspace: Workspace }
-  | { type: 'SET_LEVEL'; level: Level }
+  | { type: 'SET_WORKFLOW'; workflow: WorkflowName }
+  | { type: 'SET_ALTITUDE'; altitude: Altitude }
   | { type: 'SET_OUTPUT'; output: Output }
   | { type: 'SET_PERIOD'; period: Period }
   /**
@@ -122,9 +128,9 @@ export type Action =
   | {
       type: 'SUBMIT_INTENT'
       intent: string
-      recipeId: string | null
-      /** An example card states its own context rather than borrowing the current one. */
-      workspace?: Workspace
+      recipeId: RecipeId | null
+      /** A prompt chip states its own context rather than borrowing the current one. */
+      workflow?: WorkflowName
       period?: Period
     }
   /** One tick of the narrated build. */

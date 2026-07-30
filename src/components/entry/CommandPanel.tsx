@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import { useLayoutEffect, useRef } from 'react'
+import { OUTPUT_LABELS } from '../../data/scope'
 import { useApp } from '../../state/AppContext'
 import { useAsk } from '../../state/useAsk'
 import { ContextPicker } from './ContextPicker'
@@ -47,7 +48,7 @@ export function CommandPanel() {
           your business.
         </h1>
         <p className="cmd__sub">
-          Ask me anything about your workspaces — I'll compose the view.
+          Ask me anything about your workflows — I'll compose the view.
         </p>
 
         <div className="cmd__card">
@@ -76,7 +77,7 @@ export function CommandPanel() {
               aria-expanded={state.pickerOpen}
               onClick={() => dispatch({ type: 'TOGGLE_PICKER' })}
             >
-              ◇ Workspace: {state.workspace} <span className="cmd__caret">▾</span>
+              ◇ Workflow: {state.workflow} <span className="cmd__caret">▾</span>
             </button>
 
             <button
@@ -85,7 +86,7 @@ export function CommandPanel() {
               aria-expanded={state.pickerOpen}
               onClick={() => dispatch({ type: 'TOGGLE_PICKER' })}
             >
-              ▤ Output: {state.output} <span className="cmd__caret">▾</span>
+              ▤ Output: {OUTPUT_LABELS[state.output]} <span className="cmd__caret">▾</span>
             </button>
 
             <button

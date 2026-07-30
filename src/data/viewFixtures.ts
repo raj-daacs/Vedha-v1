@@ -2,9 +2,9 @@
 // ---------------------------------------------------------------------------
 // The illustrative data behind the rendered Insight Views.
 //
-// Keyed by `${workspace}:${recipeId}` — the same pair the header, the context pill
+// Keyed by `${workflow}:${recipeId}` — the same pair the header, the context pill
 // and the family colour all derive from. That's deliberate: a recipe can be a full
-// view in one workspace and plan-deep in another (the cohort shape renders on
+// view in one workflow and plan-deep in another (the cohort shape renders on
 // Retention, but not yet on Activation), and one key expresses that without a flag.
 //
 // NO KEY ⇒ PLAN-DEEP. A missing entry is how a recipe gets the honest "full view
@@ -22,9 +22,9 @@ import type {
   DeepenAnswer,
   SeriesPoint,
 } from '../compose/viewModels'
-import type { Workspace } from './workspaces'
+import type { RecipeId, WorkflowName } from './recipe_schema'
 
-/** What each beat of a (workspace, recipe) renders, keyed by beat id. */
+/** What each beat of a (workflow, recipe) renders, keyed by beat id. */
 export interface ViewFixture {
   subtitle: string
   meta: string
@@ -124,9 +124,9 @@ const lostAtConnectData = ONBOARDING_STEPS[1].reach - ONBOARDING_STEPS[2].reach
 
 const ACTIVATION_FUNNEL: ViewFixture = {
   subtitle: "where we're losing people",
-  meta: `Activation workspace · funnel + cohort · last ${WEEKLY_ACTIVATION.length} weeks`,
+  meta: `Activation workflow · funnel + cohort · last ${WEEKLY_ACTIVATION.length} weeks`,
   beats: {
-    stand_trend: {
+    fc_stand: {
       subtitle: `Activated ÷ New, per weekly cohort · vs the ${ACTIVATION_TARGET}% target`,
       headline: {
         value: `${activationAverage}%`,
@@ -156,13 +156,13 @@ const ACTIVATION_FUNNEL: ViewFixture = {
       takeaway: `Mature cohorts settle at ${matureRange.low}–${matureRange.high}%, short of the ${ACTIVATION_TARGET}% goal, and the rate is flat across the quarter — no drift up or down. The newest cohorts (the unfilled cells running down to the lower right) are still climbing.`,
     },
 
-    why_step: {
+    fc_why_step: {
       subtitle: 'Share of new users reaching each step · New → value moment',
       panels: [{ atom: 'funnel', data: { steps: ONBOARDING_STEPS, finalNote: 'activated' } }],
       takeaway: `The single biggest drop is at Connect data — only ${connectDataPass}% of users who finish Setup get through it, versus 88–92% at every other step. Roughly ${lostAtConnectData} of every 100 signups are lost right here. Fix this one step and the whole funnel lifts.`,
     },
 
-    why_segment: {
+    fc_why_seg: {
       subtitle: `Connect-data completion by ICP / segment · vs the ${segmentAverage}% average`,
       panels: [
         {
@@ -183,7 +183,7 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         'A scoped question re-runs the same reasoning from that section’s standpoint, which is usually a sharper answer than asking across everything.',
       ],
     },
-    stand_trend: {
+    fc_stand: {
       scopeLabel: 'deepen · where we stand',
       title: 'Activation rate — deeper',
       body: [
@@ -195,7 +195,7 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         takeaway: `Flat across all ${WEEKLY_ACTIVATION.length} weeks with no seasonal shape — the ${activationGap}-point gap to ${ACTIVATION_TARGET}% is structural, so it needs a fix rather than patience.`,
       },
     },
-    why_step: {
+    fc_why_step: {
       scopeLabel: 'deepen · connect data',
       title: 'Connect data — deeper',
       body: [
@@ -208,7 +208,7 @@ const ACTIVATION_FUNNEL: ViewFixture = {
           'At Connect data, CS-guided converts 71% against self-serve’s 48% — a 23-point spread. Path explains more of the leak than segment does, which makes guided setup the lever.',
       },
     },
-    why_segment: {
+    fc_why_seg: {
       scopeLabel: `deepen · ${worstSegment.label.toLowerCase()}`,
       title: `${worstSegment.label} — deeper`,
       body: [
@@ -241,9 +241,9 @@ const stickinessThen = STICKINESS_WEEKS[0]
 
 const RETENTION_SCORECARD: ViewFixture = {
   subtitle: 'stickiness vs benchmark',
-  meta: `Retention workspace · scorecard · last ${STICKINESS_WEEKS.length} weeks`,
+  meta: `Retention workflow · scorecard · last ${STICKINESS_WEEKS.length} weeks`,
   beats: {
-    stand_scorecard: {
+    ss_stand_level: {
       subtitle: 'Levels & stickiness ratios · each flagged against its own bar',
       panels: [
         {
@@ -292,7 +292,7 @@ const RETENTION_SCORECARD: ViewFixture = {
       takeaway: `Stickiness sits at ${dauMau}% — it clears the ${DAU_MAU_BAR}% B2B bar, but it is drifting down. Levels are steady overall, with DAU the one soft spot.`,
     },
 
-    stand_trend: {
+    ss_stand_trend: {
       subtitle: `DAU/MAU over ${STICKINESS_WEEKS.length} weeks · vs the ${DAU_MAU_BAR}% benchmark line`,
       panels: [
         {
@@ -320,7 +320,7 @@ const RETENTION_SCORECARD: ViewFixture = {
         'Engagement is a state, so most useful questions here are comparative: against the bar, against last quarter, or against a segment.',
       ],
     },
-    stand_scorecard: {
+    ss_stand_level: {
       scopeLabel: 'deepen · stickiness',
       title: 'Stickiness — deeper',
       body: [
@@ -332,7 +332,7 @@ const RETENTION_SCORECARD: ViewFixture = {
         takeaway: `MAU is up 3% while DAU is down 2%, so the base is widening faster than habit is forming. That is what pushes DAU/MAU down from ${stickinessThen}% to ${dauMau}% despite healthy top-line growth.`,
       },
     },
-    stand_trend: {
+    ss_stand_trend: {
       scopeLabel: 'deepen · trend',
       title: 'Trend — deeper',
       body: [
@@ -407,9 +407,9 @@ const nrrMatrix: CohortMatrixData = {
 
 const RETENTION_COHORT: ViewFixture = {
   subtitle: 'is net revenue retention holding by cohort age?',
-  meta: `Retention workspace · cohort matrix · ${COHORT_QUALITY.length} cohorts × ${NRR_BY_AGE.length} months`,
+  meta: `Retention workflow · cohort matrix · ${COHORT_QUALITY.length} cohorts × ${NRR_BY_AGE.length} months`,
   beats: {
-    stand_curve: {
+    co_stand: {
       subtitle: `Net revenue retention by cohort age · vs the ${NRR_BASELINE}% line`,
       headline: {
         value: `${nrrMature}%`,
@@ -438,7 +438,7 @@ const RETENTION_COHORT: ViewFixture = {
       takeaway: `The curve dips to ${NRR_BY_AGE[nrrTroughIndex]}% by month ${nrrTroughIndex}, then expansion pulls it back above ${NRR_BASELINE}% at month ${nrrRecoveryIndex} and on to ${nrrMature}% by month ${NRR_BY_AGE.length - 1}. The base grows without new sales — but only after the early contraction is absorbed.`,
     },
 
-    why_matrix: {
+    co_why: {
       subtitle: 'Each signup cohort × months since start · every cohort’s NRR path',
       panels: [{ atom: 'cohortMatrix', data: nrrMatrix }],
       takeaway: `Every cohort follows the same smile, and the later ones sit higher throughout — ${COHORT_MONTHS[COHORT_QUALITY.length - 1]} is running above ${COHORT_MONTHS[0]} at the same age. The early dip is structural rather than a bad quarter; what's improving is how much of it gets recovered.`,
@@ -454,7 +454,7 @@ const RETENTION_COHORT: ViewFixture = {
         'Cohort questions are usually about which cohorts, or which age — selecting the matrix scopes to the first, the curve to the second.',
       ],
     },
-    stand_curve: {
+    co_stand: {
       scopeLabel: 'deepen · the curve',
       title: 'The NRR smile — deeper',
       body: [
@@ -466,7 +466,7 @@ const RETENTION_COHORT: ViewFixture = {
         takeaway: `${nrrRecoveryIndex} months. The dip bottoms at ${NRR_BY_AGE[nrrTroughIndex]}% in month ${nrrTroughIndex} and expansion carries it back over ${NRR_BASELINE}% by month ${nrrRecoveryIndex}, reaching ${nrrMature}% by month ${NRR_BY_AGE.length - 1}.`,
       },
     },
-    why_matrix: {
+    co_why: {
       scopeLabel: 'deepen · cohort quality',
       title: 'Which cohorts, and where — deeper',
       body: [
@@ -485,8 +485,8 @@ const RETENTION_COHORT: ViewFixture = {
 // The registry
 // ===========================================================================
 
-export function fixtureKey(workspace: Workspace, recipeId: string): string {
-  return `${workspace}:${recipeId}`
+export function fixtureKey(workflow: WorkflowName, recipeId: RecipeId): string {
+  return `${workflow}:${recipeId}`
 }
 
 export const VIEW_FIXTURES: Record<string, ViewFixture> = {

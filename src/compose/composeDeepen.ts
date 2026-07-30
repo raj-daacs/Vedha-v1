@@ -4,7 +4,7 @@
 // standpoint, or from the whole view (brief §5.3).
 //
 // Family-blind like the rest of the compose layer: a scope is just a beat id (or
-// `'root'`), and the answer is looked up on the same (workspace, recipe) fixture the
+// `'root'`), and the answer is looked up on the same (workflow, recipe) fixture the
 // view itself came from. One panel component renders whatever this returns.
 //
 // Ephemeral is the default. An answer becomes part of the artifact only when it's
@@ -13,7 +13,7 @@
 
 import type { ComposeContext } from './models'
 import type { DeepenModel } from './viewModels'
-import type { Recipe } from '../data/recipeTypes'
+import type { Recipe } from '../data/recipe_schema'
 import { VIEW_FIXTURES, fixtureKey } from '../data/viewFixtures'
 
 /** The whole-view scope, opened by "Ask about this view". */
@@ -27,7 +27,7 @@ export function composeDeepen(
 ): DeepenModel | null {
   if (!scope) return null
 
-  const fixture = VIEW_FIXTURES[fixtureKey(context.workspace, recipe.id)]
+  const fixture = VIEW_FIXTURES[fixtureKey(context.workflow, recipe.id)]
   const answer = fixture?.deepen[scope]
   if (!answer) return null
 

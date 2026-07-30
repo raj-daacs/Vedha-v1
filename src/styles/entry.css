@@ -99,7 +99,7 @@
   cursor: pointer;
 }
 
-/* The Workspace chip carries the operator's context, so it reads as set, not empty. */
+/* The Workflow chip carries the operator's context, so it reads as set, not empty. */
 .cmd__chip--accent {
   border-color: var(--teal);
   background: var(--teal-tint);
@@ -200,7 +200,7 @@
 }
 
 /* The secondary dimensions' options, inline on the right of their row. Small and
-   quiet at rest — the workspace above is the decision that matters most. */
+   quiet at rest — the workflow above is the decision that matters most. */
 .picker__options {
   display: flex;
   gap: 4px;

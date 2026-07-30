@@ -17,14 +17,15 @@
 // Not as `if (family === 'state')`. Every difference below is read off fields the
 // recipe DECLARED about itself:
 //
-//   the spine       ← SpineDecl.input / .work / .output       (absent ⇒ empty array)
-//   the facets      ← which SpineDecl fields exist at all
+//   the spine       ← SpineDecl's declared triplet                (absent ⇒ empty array)
+//   the facets      ← whether a spine was derived at all
+//   the benchmark   ← Recipe.trigger.goal_metric_kind
 //   the note        ← emitted when the derived spine came back empty
 //   the plan label  ← same
 //   thin beats      ← Beat.optional + Recipe.four_question_fit
 //
 // A state family collapses because it has no spine to declare. Nothing asks its
-// name. Add a fifth recipe and this function already handles it.
+// name. Add a sixth recipe and this function already handles it.
 // ---------------------------------------------------------------------------
 
 import type { BeatModel, Chip, ComposeContext, Facet, PlanModel, SpineNode } from './models'
@@ -36,26 +37,26 @@ import {
   spineLabel,
 } from './templates'
 import { semanticsFor } from '../data/semanticModel'
-import type { Beat, Recipe, SpineDecl } from '../data/recipeTypes'
-import { PERIOD_LABELS } from '../data/workspaces'
+import type { Beat, Recipe, SpineDecl } from '../data/recipe_schema'
+import { PERIOD_LABELS } from '../data/scope'
 
 /**
  * The recipe's subject in the operator's words.
  *
  * A recipe may carry its own label for what it watches — the engagement scorecard
  * is "Product engagement", not "Retention" — but that label is only true under the
- * workspace it describes. Gated on `displayLabelWorkspace` so the header can never
+ * workflow it describes. Gated on `displayLabelWorkspace` so the header can never
  * contradict the context pill: the two, plus the family colour, all derive from
- * this same (workspace, recipe) pair.
+ * this same (workflow, recipe) pair.
  *
- * `WORKSPACE_RECIPES` already makes the scorecard unreachable outside Retention, so
- * today this gate is belt as well as braces. It's here because that reachability
- * guarantee is structural and a fifth recipe could quietly break it.
+ * A workflow's `eligible` list already makes the scorecard unreachable outside
+ * Retention, so today this gate is belt as well as braces. It's here because that
+ * reachability guarantee is structural and a sixth recipe could quietly break it.
  */
 export function subjectOf(recipe: Recipe, context: ComposeContext): string {
   const labelApplies =
-    recipe.displayLabel !== undefined && recipe.displayLabelWorkspace === context.workspace
-  return labelApplies ? recipe.displayLabel! : context.workspace
+    recipe.displayLabel !== undefined && recipe.displayLabelWorkspace === context.workflow
+  return labelApplies ? recipe.displayLabel! : context.workflow
 }
 
 /** "Product engagement — this month" · "Activation — last quarter" */
@@ -64,20 +65,49 @@ export function resolveTitle(recipe: Recipe, context: ComposeContext): string {
 }
 
 /**
- * Derive the input → work → output backbone from what the recipe declared.
+ * Derive the three-node backbone from what the recipe declared.
  *
- * A flow declares all three. A state declares none of them — it names a state and
- * a benchmark instead — so this returns `[]` and the spine simply isn't there.
- * That empty array IS the "collapse" in "the four questions collapse for the state
- * family": downstream there is nothing to lay beats on, so they stack instead.
+ * TWO TRIPLETS, ONE BACKBONE. A flow declares `input → work → output`; a response
+ * declares `lever → response → constraint`. Different vocabulary, identical reading:
+ * where it starts, what acts on it, where it lands. So both collapse onto the same
+ * three emphases and nothing downstream learns which words were used.
+ *
+ * Reading BOTH is what keeps spine-emptiness meaning exactly one thing. Were only the
+ * flow triplet read, `price_sensitivity` would come back spineless and get rendered
+ * as the state it isn't — collapsed, and captioned "not a flow you run". After this,
+ * an empty spine is the scorecard and nothing else.
+ *
+ * A state declares neither triplet, so this returns `[]` and the spine simply isn't
+ * there. That empty array IS the "collapse" in "the four questions collapse for the
+ * state family": downstream there is nothing to lay beats on, so they stack instead.
  */
 export function deriveSpine(declared: SpineDecl): SpineNode[] {
+  const node = (field: string | undefined, emphasis: SpineNode['emphasis']) =>
+    field ? { label: spineLabel(field), emphasis } : null
+
   const nodes: Array<SpineNode | null> = [
-    declared.input ? { label: spineLabel(declared.input), emphasis: 'input' } : null,
-    declared.work ? { label: spineLabel(declared.work), emphasis: 'work' } : null,
-    declared.output ? { label: spineLabel(declared.output), emphasis: 'output' } : null,
+    node(declared.input ?? declared.lever, 'input'),
+    node(declared.work ?? declared.response, 'work'),
+    node(declared.output ?? declared.constraint, 'output'),
   ]
-  return nodes.filter((node): node is SpineNode => node !== null)
+  return nodes.filter((entry): entry is SpineNode => entry !== null)
+}
+
+/**
+ * Is this shape judged against an external bar, rather than against its own history?
+ *
+ * Read off `trigger.goal_metric_kind` — the recipe's own account of what kind of
+ * number it produces. The scorecard's reads "ratio / level vs benchmark", and that
+ * phrase IS the declaration: a ratio only means something beside the bar it's held
+ * against. A rate is judged against target and a balance against last period — both
+ * different sentences, and neither earns the suffix.
+ *
+ * This replaces the `spine.benchmark` field the current schema no longer carries.
+ * Exported as one helper so the plan's benchmark facet and the view's "① Where we
+ * stand vs benchmark" cannot disagree about the answer.
+ */
+export function judgedAgainstBenchmark(recipe: Recipe): boolean {
+  return recipe.trigger.goal_metric_kind.toLowerCase().includes('benchmark')
 }
 
 /**
@@ -86,20 +116,19 @@ export function deriveSpine(declared: SpineDecl): SpineNode[] {
  * Each kind of thing the recipe declared contributes its own facet, which is why
  * the two families end up with different vocabulary without anyone choosing it:
  *
- *   declares a flow (input/work/output) → it's judged by MEASURES and
- *                                          interrogated by SLICES
- *   declares a state                    → the levels and ratios it watches
- *   declares a benchmark                → the bar those are judged against
+ *   derives a spine        → it's judged by MEASURES and interrogated by SLICES
+ *   derives no spine       → the levels and ratios it watches, since a state you
+ *                            monitor has no flow to measure or slice
+ *   judged vs a benchmark  → the bar those are held against
  *
  * Chips are marked `in-plan` when this beat set actually reads them, `available`
- * when the workspace has them but this plan doesn't use them. Showing both is the
+ * when the workflow has them but this plan doesn't use them. Showing both is the
  * point: it tells the operator what they could add, which is what makes the panel
  * an affordance rather than a legend.
  */
 function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[]): Facet[] {
-  const semantics = semanticsFor(context.workspace)
+  const semantics = semanticsFor(context.workflow)
   const bindings = bindingsFor(semantics, context.period)
-  const declared = recipe.spine
 
   // What the plan reads, flattened, with templates resolved so "{goal_metric}"
   // can be recognised as "Activation Rate".
@@ -139,15 +168,19 @@ function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[
     })
   }
 
-  if (declared.state) {
+  // No spine ⇒ a state you monitor. There is no flow here to judge by measures or
+  // cut by dimensions, so what it watches IS the scope. Gated on the DERIVED spine
+  // rather than on a declared field, which is the mechanism the schema names: a
+  // shape check ("spine empty?"), never a family check.
+  if (spine.length === 0) {
     facets.push({
+      // A monitored state is the recipe's whole reason for existing, so all of it is in play.
       label: 'state',
-      // A declared state is what the recipe exists to monitor, so all of it is in play.
       chips: semantics.states.map((state): Chip => ({ label: state, state: 'in-plan' })),
     })
   }
 
-  if (declared.benchmark) {
+  if (judgedAgainstBenchmark(recipe)) {
     facets.push({
       label: 'benchmark',
       chips: semantics.benchmarks.map((bar): Chip => ({ label: bar, state: 'in-plan' })),
@@ -180,7 +213,7 @@ const CONFIDENCE_LABELS = {
 
 /** What the recipe declared this beat reads, with templates resolved. */
 function declaredReads(beat: Beat, context: ComposeContext): string[] {
-  const bindings = bindingsFor(semanticsFor(context.workspace), context.period)
+  const bindings = bindingsFor(semanticsFor(context.workflow), context.period)
   return beat.reads.map((read) => resolveTemplate(read, bindings))
 }
 
@@ -188,11 +221,11 @@ function declaredReads(beat: Beat, context: ComposeContext): string[] {
  * EDIT B's candidate list: everything this beat could read.
  *
  * The recipe's own declarations come first — they're the beat's reason for existing —
- * then the rest of the workspace's measures and lenses, so the operator can widen
+ * then the rest of the workflow's measures and lenses, so the operator can widen
  * the scope rather than only narrow it.
  */
 function candidateReads(beat: Beat, context: ComposeContext): string[] {
-  const semantics = semanticsFor(context.workspace)
+  const semantics = semanticsFor(context.workflow)
   const offered = [...semantics.metrics, ...semantics.dimensions]
   return Array.from(new Set([...declaredReads(beat, context), ...offered]))
 }
@@ -209,11 +242,12 @@ function composeBeat(
   context: ComposeContext,
   options: PlanEditOptions,
 ): BeatModel {
-  const semantics = semanticsFor(context.workspace)
+  const semantics = semanticsFor(context.workflow)
   const bindings = bindingsFor(semantics, context.period)
 
-  // An optional beat in a collapsing plan is present but drawn back.
-  const thin = beat.optional
+  // An optional beat in a collapsing plan is present but drawn back. `optional` is
+  // itself optional in the schema now, so absent reads as "always in the plan".
+  const thin = beat.optional ?? false
   const confidence = CONFIDENCE_LABELS[beat.confidence]
 
   const declared = declaredReads(beat, context)
@@ -276,7 +310,7 @@ export function composePlan(
     // lookup table that would need editing every time a family is added.
     badge: `${shortRecipeName(recipe.name)} · ${capitalise(recipe.family)} family`,
     intent: context.intent,
-    contextChips: [context.workspace, PERIOD_LABELS[context.period]],
+    contextChips: [context.workflow, PERIOD_LABELS[context.period]],
     scope: {
       label: "What I'm working with · from the recipe",
       spine,

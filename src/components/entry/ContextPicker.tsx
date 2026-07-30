@@ -3,14 +3,14 @@
 // The map, collapsed to a picker (moodboard: "not a browsable surface").
 // Opens inline under the chip row — never a modal.
 //
-// All four context dimensions are live. The design lists Level / Output / Period
-// as single rows with their options as static text on the right; here those
-// options are the controls, which keeps the one-row-per-dimension shape while
-// making the row do something.
+// INTERIM. This is still the single picker every chip opens; step 4 of the scope
+// work replaces it with three real ones (Altitude · Workflow · Output). Renamed to
+// the workflow model here so the tree compiles and behaves, nothing more.
 // ---------------------------------------------------------------------------
 
-import { LEVELS, OUTPUTS, PERIODS, WORKSPACES } from '../../data/workspaces'
-import type { Level, Output, Period } from '../../data/workspaces'
+import { ALTITUDES, workflowsForLevel } from '../../data/recipes'
+import { OUTPUTS, OUTPUT_LABELS, PERIODS } from '../../data/scope'
+import type { Altitude, Output, Period } from '../../data/recipe_schema'
 import { useApp } from '../../state/AppContext'
 import type { Action } from '../../state/types'
 
@@ -25,18 +25,21 @@ export function ContextPicker() {
     label: string
     options: readonly string[]
     current: string
+    /** How an option id reads to an operator, where the two differ. */
+    labelFor?: (value: string) => string
     action: (value: string) => Action
   }> = [
     {
-      label: 'Level',
-      options: LEVELS,
-      current: state.level,
-      action: (value) => ({ type: 'SET_LEVEL', level: value as Level }),
+      label: 'Altitude',
+      options: ALTITUDES,
+      current: state.altitude,
+      action: (value) => ({ type: 'SET_ALTITUDE', altitude: value as Altitude }),
     },
     {
       label: 'Output',
       options: OUTPUTS,
       current: state.output,
+      labelFor: (value) => OUTPUT_LABELS[value as Output],
       action: (value) => ({ type: 'SET_OUTPUT', output: value as Output }),
     },
     {
@@ -47,23 +50,27 @@ export function ContextPicker() {
     },
   ]
 
+  // Cascaded off the altitude: a workflow exists at exactly one altitude, so listing
+  // all eight would offer pairs that can't hold.
+  const workflows = workflowsForLevel(state.altitude)
+
   return (
     <div className="picker">
-      <div className="picker__eyebrow">Workspace — your business</div>
+      <div className="picker__eyebrow">Workflow — your business</div>
 
-      {WORKSPACES.map((workspace) => {
-        const selected = state.workspace === workspace
+      {workflows.map((workflow) => {
+        const selected = state.workflow === workflow.name
         return (
           <button
-            key={workspace}
+            key={workflow.name}
             type="button"
             className={
               'picker__row picker__row--selectable' + (selected ? ' picker__row--selected' : '')
             }
             aria-pressed={selected}
-            onClick={() => dispatch({ type: 'SET_WORKSPACE', workspace })}
+            onClick={() => dispatch({ type: 'SET_WORKFLOW', workflow: workflow.name })}
           >
-            {workspace}
+            {workflow.name}
             {selected && <span aria-hidden="true">✓</span>}
           </button>
         )
@@ -84,7 +91,7 @@ export function ContextPicker() {
                 aria-pressed={option === row.current}
                 onClick={() => dispatch(row.action(option))}
               >
-                {option}
+                {row.labelFor ? row.labelFor(option) : option}
               </button>
             ))}
           </span>

@@ -12,19 +12,17 @@
 // reasoned verdict (`Beat.fills_from` → the RS nodes) is a separate track.
 //
 // ── Precedence ──────────────────────────────────────────────────────────────
-// THE SELECTED WORKSPACE IS AUTHORITATIVE. It decides which recipes are eligible;
+// THE SELECTED WORKFLOW IS AUTHORITATIVE. It decides which recipes are eligible;
 // the free text only refines within that set. Text can never pull the operator
-// into a shape their workspace doesn't produce — that used to happen, and it left
+// into a shape their workflow doesn't produce — that used to happen, and it left
 // the header, the context pill, and the plan disagreeing about what was being
-// looked at. When the text names a shape this workspace can't render, the answer
+// looked at. When the text names a shape this workflow can't render, the answer
 // is no-match plus a pointer to where it *would* have matched.
 // ---------------------------------------------------------------------------
 
-import { RECIPES, RECIPES_BY_ID, WORKSPACE_RECIPES } from './recipes'
-import type { Recipe } from './recipeTypes'
+import { RECIPES, RECIPES_BY_ID, WORKFLOWS, getWorkflow } from './recipes'
+import type { Recipe, RecipeId, WorkflowName } from './recipe_schema'
 import { semanticsFor } from './semanticModel'
-import { WORKSPACES } from './workspaces'
-import type { Workspace } from './workspaces'
 
 export interface RecipeMatch {
   recipe: Recipe
@@ -34,8 +32,8 @@ export interface RecipeMatch {
 }
 
 /** Where an ask would have landed, had the operator been standing somewhere else. */
-export interface WorkspaceSuggestion {
-  workspace: Workspace
+export interface WorkflowSuggestion {
+  workflow: WorkflowName
   recipe: Recipe
 }
 
@@ -44,19 +42,19 @@ export interface SelectRecipeResult {
   recipe: Recipe | null
   score: number
   matchedSignals: string[]
-  /** runners-up within this workspace, best first. Feeds the Edit-A recipe list. */
+  /** runners-up within this workflow, best first. Feeds the Edit-A recipe list. */
   alternatives: RecipeMatch[]
   /**
-   * Only populated on a no-match: workspaces where this same text WOULD have
+   * Only populated on a no-match: workflows where this same text WOULD have
    * resolved. Lets the no-match state ask "did you mean Monetisation?" rather than
    * only "be more specific".
    *
    * NOT YET RENDERED — surfacing it needs a CommandPanel change.
    */
-  suggestedWorkspaces: WorkspaceSuggestion[]
+  suggestedWorkflows: WorkflowSuggestion[]
   /**
    * True when the recipe was reached by elimination, not recognition: the ask was
-   * on-domain but named no shape, and the workspace offers exactly one. Worth
+   * on-domain but named no shape, and the workflow offers exactly one. Worth
    * knowing because the build screen currently narrates "Recognising the shape",
    * which overstates what happened here.
    */
@@ -78,9 +76,9 @@ const TOKEN_OVERLAP = 2
  * Note what this does and doesn't protect against. It rejects an ask with no
  * signal at all; it does NOT reject an ask carried by a single incidental word,
  * because one overlap already scores TOKEN_OVERLAP. The real safety now comes from
- * `WORKSPACE_RECIPES` narrowing the field to one or two candidates before any text
+ * `a workflow's eligible list` narrowing the field to one or two candidates before any text
  * is scored — a mis-scored ask can at worst pick the wrong one of two shapes the
- * operator's own workspace produces, never a shape from somewhere else entirely.
+ * operator's own workflow produces, never a shape from somewhere else entirely.
  */
 const FLOOR = 2
 
@@ -153,7 +151,7 @@ interface SignalScore {
   tokenHits: number
 }
 
-/** Score one recipe's trigger against the intent. Workspace is NOT folded in here. */
+/** Score one recipe's trigger against the intent. WorkflowName is NOT folded in here. */
 function scoreSignals(recipe: Recipe, intentNorm: string, intentTokens: string[]): SignalScore {
   let score = 0
   let phraseHits = 0
@@ -201,15 +199,15 @@ function scoreSignals(recipe: Recipe, intentNorm: string, intentTokens: string[]
 // ---------------------------------------------------------------------------
 
 /**
- * Rank the recipes a given workspace can produce against the intent.
+ * Rank the recipes a given workflow can produce against the intent.
  *
- * The candidate list IS the workspace constraint — nothing outside it is scored,
- * so no amount of matching text can reach a shape this workspace doesn't render.
+ * The candidate list IS the workflow constraint — nothing outside it is scored,
+ * so no amount of matching text can reach a shape this workflow doesn't render.
  * Every eligible recipe comes back, scored (including zero), so the caller can see
  * the top score and decide whether it cleared the floor.
  */
 function rankWithin(
-  candidateIds: string[],
+  candidateIds: readonly RecipeId[],
   intentNorm: string,
   intentTokens: string[],
 ): RecipeMatch[] {
@@ -229,7 +227,7 @@ function rankWithin(
         },
       ]
     })
-    // Score desc, then the workspace's own ordering — no positional bonus, so the
+    // Score desc, then the workflow's own ordering — no positional bonus, so the
     // list order only ever breaks a genuine tie. Deterministic across runs.
     .sort((a, b) => b.match.score - a.match.score || a.rank - b.rank)
     .map((entry) => entry.match)
@@ -265,7 +263,7 @@ const ALL_SIGNAL_TOKENS: Set<string> = new Set(
  * Is the operator asking about their business at all?
  *
  * This is the difference between "you asked something analytical, and this
- * workspace only does one thing, so I'll assume you meant that" and "I have no
+ * workflow only does one thing, so I'll assume you meant that" and "I have no
  * idea what you want". It's what lets *"show me this month status"* on Acquisition
  * resolve to the funnel — "status" is analytical vocabulary, Acquisition renders
  * exactly one shape, so there is nothing to be ambiguous about — while
@@ -273,17 +271,17 @@ const ALL_SIGNAL_TOKENS: Set<string> = new Set(
  *
  * A bare period ("this month") is NOT on-domain on its own — see TIME_WORDS.
  */
-function isOnDomain(intentNorm: string, intentTokens: string[], workspace: Workspace): boolean {
+function isOnDomain(intentNorm: string, intentTokens: string[], workflow: WorkflowName): boolean {
   const meaningful = intentTokens.filter((token) => !TIME_WORDS.has(token))
   if (meaningful.length === 0) return false
 
-  // Vocabulary from any recipe — including shapes this workspace can't render,
+  // Vocabulary from any recipe — including shapes this workflow can't render,
   // since the operator asking for one still counts as asking about the business.
   if (ALL_SIGNAL_PHRASES.some((phrase) => intentNorm.includes(` ${phrase} `))) return true
   if (meaningful.some((token) => ALL_SIGNAL_TOKENS.has(token))) return true
 
-  // Vocabulary from what Vedha already knows about this workspace.
-  const semantics = semanticsFor(workspace)
+  // Vocabulary from what Vedha already knows about this workflow.
+  const semantics = semanticsFor(workflow)
   const vocabulary = new Set(
     [
       semantics.goalMetric,
@@ -301,33 +299,33 @@ function isOnDomain(intentNorm: string, intentTokens: string[], workspace: Works
 
 /**
  * Pick the recipe whose shape best fits what the operator asked for, within the
- * workspace they're standing in.
+ * workflow they're standing in.
  *
  * @param intent    the operator's plain-language question
- * @param workspace where they're standing — AUTHORITATIVE. It constrains which
+ * @param workflow where they're standing — AUTHORITATIVE. It constrains which
  *                  recipes are eligible; the text only refines within that set.
  *
  * Returns `recipe: null` when nothing eligible matched confidently. That's a real
  * answer, not a failure: Vedha asks rather than composing a plan whose own header
- * would contradict the context label. On a no-match, `suggestedWorkspaces` names
+ * would contradict the context label. On a no-match, `suggestedWorkflows` names
  * anywhere the same ask would have landed.
  */
-export function selectRecipe(intent: string, workspace: Workspace): SelectRecipeResult {
+export function selectRecipe(intent: string, workflow: WorkflowName): SelectRecipeResult {
   const intentNorm = normalise(intent)
   const intentTokens = tokenise(intentNorm)
 
-  const eligibleIds = WORKSPACE_RECIPES[workspace] ?? []
+  const eligibleIds = getWorkflow(workflow).eligible
   const ranked = rankWithin(eligibleIds, intentNorm, intentTokens)
   const [best, ...rest] = ranked
 
-  // The text named a shape this workspace produces.
+  // The text named a shape this workflow produces.
   if (best && best.score >= FLOOR) {
     return {
       recipe: best.recipe,
       score: best.score,
       matchedSignals: best.matchedSignals,
       alternatives: rest.filter((match) => match.score >= FLOOR),
-      suggestedWorkspaces: [],
+      suggestedWorkflows: [],
       resolvedByElimination: false,
     }
   }
@@ -335,25 +333,25 @@ export function selectRecipe(intent: string, workspace: Workspace): SelectRecipe
   // Nothing here cleared the floor. Whichever way this resolves, it's worth knowing
   // where the ask WOULD have landed — the operator may simply be standing in the
   // wrong place, and that's a far more useful thing to say than "be more specific".
-  const suggestedWorkspaces: WorkspaceSuggestion[] = WORKSPACES.filter(
-    (candidate) => candidate !== workspace,
+  const suggestedWorkflows: WorkflowSuggestion[] = WORKFLOWS.map((w) => w.name).filter(
+    (candidate) => candidate !== workflow,
   ).flatMap((candidate) => {
     const [elsewhere] = rankWithin(
-      WORKSPACE_RECIPES[candidate] ?? [],
+      getWorkflow(candidate).eligible,
       intentNorm,
       intentTokens,
     ).filter((match) => match.score >= FLOOR)
-    return elsewhere ? [{ workspace: candidate, recipe: elsewhere.recipe }] : []
+    return elsewhere ? [{ workflow: candidate, recipe: elsewhere.recipe }] : []
   })
 
-  // If the workspace renders exactly one shape and the ask was at least about the
-  // business, there is nothing to be ambiguous about — take it. The workspace is
+  // If the workflow renders exactly one shape and the ask was at least about the
+  // business, there is nothing to be ambiguous about — take it. The workflow is
   // authoritative, so a shapeless-but-on-domain ask means "analyse what I'm looking
   // at". Any suggestions ride along, so the UI can still offer the other reading.
   //
   // With two or more eligible shapes we do NOT pick: guessing between two plausible
   // readings is how the operator ends up with a plan they didn't ask for.
-  if (eligibleIds.length === 1 && isOnDomain(intentNorm, intentTokens, workspace)) {
+  if (eligibleIds.length === 1 && isOnDomain(intentNorm, intentTokens, workflow)) {
     const only = RECIPES_BY_ID[eligibleIds[0]]
     if (only) {
       return {
@@ -361,7 +359,7 @@ export function selectRecipe(intent: string, workspace: Workspace): SelectRecipe
         score: 0,
         matchedSignals: [],
         alternatives: [],
-        suggestedWorkspaces,
+        suggestedWorkflows,
         resolvedByElimination: true,
       }
     }
@@ -372,7 +370,7 @@ export function selectRecipe(intent: string, workspace: Workspace): SelectRecipe
     score: 0,
     matchedSignals: [],
     alternatives: [],
-    suggestedWorkspaces,
+    suggestedWorkflows,
     resolvedByElimination: false,
   }
 }

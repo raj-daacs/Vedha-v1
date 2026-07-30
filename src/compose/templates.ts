@@ -6,8 +6,8 @@
 // concrete. This is where the two meet.
 // ---------------------------------------------------------------------------
 
-import type { WorkspaceSemantics } from '../data/semanticModel'
-import type { Period } from '../data/workspaces'
+import type { WorkflowSemantics } from '../data/semanticModel'
+import type { Period } from '../data/recipe_schema'
 
 export interface Bindings {
   goal_metric: string
@@ -20,7 +20,7 @@ export interface Bindings {
   balance: string
 }
 
-export function bindingsFor(semantics: WorkspaceSemantics, period: Period): Bindings {
+export function bindingsFor(semantics: WorkflowSemantics, period: Period): Bindings {
   return {
     goal_metric: semantics.goalMetric,
     period,
