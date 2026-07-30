@@ -465,6 +465,61 @@ for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
 
 console.log(`\n      ${bridgeCount} bridge panels checked`)
 
+// NEVER TWICE IN ONE VIEW. The waterfall fuses "where we stand" and the top-level
+// "why" — it shows the net move and its components in the same picture — so a second
+// one is the same chart restated, not a second finding. Two bridges did ship once;
+// this is what stops it coming back.
+//
+// `mb_ahead` is the one legitimate repeat: same walk, plus a projected closing bar.
+// It's a different claim (a forecast, stamped directional), so it gets counted apart.
+console.log('\n      no view renders the waterfall twice:')
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const bridgeBeats = Object.entries(fixture.beats).filter(([, beat]) =>
+    beat.panels.some((panel) => panel.atom === 'bridge'),
+  )
+  if (bridgeBeats.length === 0) continue
+
+  const measured = bridgeBeats.filter(([beatId]) => beatId !== 'mb_ahead').map(([id]) => id)
+  const label = `${key} — bridge on ${bridgeBeats.map(([id]) => id).join(', ')}`
+  if (measured.length <= 1) pass(`        ${label}`)
+  else {
+    fail(`        ${label}`)
+    console.log(`                ${measured.length} measured waterfalls in one view; expected 1.`)
+  }
+}
+
+// THE DIMENSIONAL WHY MUST RECONCILE WITH THE COMPONENT IT SPLITS. The fixtures claim
+// the ranked bars sum to one of the bridge's movements — that claim is the reason the
+// two sections can be read as one fact at two depths, so it should be enforced rather
+// than asserted in a comment.
+console.log('\n      the dimensional split sums to a component of its own bridge:')
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const bridgePanel = Object.values(fixture.beats)
+    .flatMap((beat) => beat.panels)
+    .find((panel) => panel.atom === 'bridge')
+  if (!bridgePanel || bridgePanel.atom !== 'bridge') continue
+
+  for (const [beatId, beat] of Object.entries(fixture.beats)) {
+    for (const panel of beat.panels) {
+      if (panel.atom !== 'rankedBars') continue
+      const total = Math.round(panel.data.bars.reduce((t, b) => t + b.value, 0) * 100)
+      const match = bridgePanel.data.movements.find(
+        (m) => Math.round(Math.abs(m.delta) * 100) === total,
+      )
+      const label = `        ${key} · ${beatId} — bars sum to ${(total / 100).toFixed(2)}`
+      if (match) pass(`${label}, which is ${match.label}`)
+      else {
+        fail(label)
+        console.log(
+          `                no movement on this bridge equals ${(total / 100).toFixed(2)} — ` +
+            `the split would not reconcile with the waterfall above it.\n` +
+            `                movements: ${bridgePanel.data.movements.map((m) => `${m.label} ${m.delta}`).join(', ')}`,
+        )
+      }
+    }
+  }
+}
+
 // ===========================================================================
 
 const total = SPEC_CASES.length + ROUTE_CASES.length + WORKFLOWS.length * 2

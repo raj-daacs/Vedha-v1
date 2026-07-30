@@ -18,6 +18,17 @@ export interface Bindings {
    */
   period: string
   balance: string
+  /**
+   * A shorter alias for the goal metric, for questions that read as prose rather
+   * than as a spec: "How {metric} moved, opening to closing".
+   */
+  metric: string
+  /**
+   * The workflow's PRIMARY way to slice — "Which {dimension} drove the biggest
+   * component?" → "Which segment…". First in the semantic model's list, because
+   * that list is written most-useful-first.
+   */
+  dimension: string
 }
 
 export function bindingsFor(semantics: WorkflowSemantics, period: Period): Bindings {
@@ -25,6 +36,10 @@ export function bindingsFor(semantics: WorkflowSemantics, period: Period): Bindi
     goal_metric: semantics.goalMetric,
     period,
     balance: semantics.balance,
+    metric: semantics.goalMetric,
+    // Falls back to the literal word rather than to empty: "Which dimension drove…"
+    // is clumsy but readable, whereas "Which  drove…" looks broken.
+    dimension: semantics.dimensions[0] ?? 'dimension',
   }
 }
 

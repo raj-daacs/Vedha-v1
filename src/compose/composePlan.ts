@@ -203,7 +203,18 @@ function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[
  * Keyed on the declared fit, not on the family, so it generalises.
  */
 function showsOptionalBeats(recipe: Recipe): boolean {
-  return recipe.four_question_fit === 'collapse'
+  // `hold` is the only fit that DROPS its optionals. The funnel's four questions each
+  // hold their own beat, so its optional projection is genuinely not part of the plan
+  // until something asks for it.
+  //
+  // `collapse` and `bend` both keep theirs, drawn back. For the scorecard the reason
+  // is that the thinning IS the finding. For a bending shape the reason is different:
+  // `movement_bridge` declares its dimensional why and its projection as optional
+  // because they only apply where a slicing dimension or a run-rate is meaningful —
+  // which varies by WORKFLOW, not by whether the shape wants them. Dropping them from
+  // the plan outright would hide beats the recipe considers part of itself, and the
+  // fixture is what decides whether any given workflow actually builds them.
+  return recipe.four_question_fit !== 'hold'
 }
 
 /**

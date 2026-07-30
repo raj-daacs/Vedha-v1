@@ -557,35 +557,71 @@ const arrExpansion = ARR_BRIDGE.movements[1].delta
 const arrBiggestCut = largest(ARR_BRIDGE.movements, -1)
 const arrProjected = Math.round((ARR_BRIDGE.closing.value + arrNet) * 100) / 100
 
+/**
+ * Churn — the biggest drag on the ARR bridge — split by segment. THE DIMENSIONAL WHY.
+ *
+ * Not a second waterfall: the waterfall already answered "which component", so
+ * repeating it would be the same chart twice. This asks the next question down, which
+ * needs a different shape.
+ *
+ * The bars sum to the component they decompose, so the two sections reconcile: read
+ * `Churn −0.31` off the bridge, then read where the 0.31 went.
+ */
+const ARR_CHURN_BY_SEGMENT = [
+  { label: 'SMB', value: 0.17 },
+  { label: 'Mid-market', value: 0.09 },
+  { label: 'Enterprise', value: 0.05 },
+]
+const arrChurnSplitTotal =
+  Math.round(ARR_CHURN_BY_SEGMENT.reduce((t, b) => t + b.value, 0) * 100) / 100
+const arrWorstChurn = ARR_CHURN_BY_SEGMENT[0]
+const arrWorstChurnShare = Math.round((arrWorstChurn.value / arrChurnSplitTotal) * 100)
+
 const REVENUE_ARR_BUILD: ViewFixture = {
   subtitle: 'how ARR moved, opening to closing',
   meta: 'Revenue engine workflow · ARR bridge · opening → closing',
   beats: {
-    mb_stand: {
-      subtitle: 'Opening ARR → movements → closing ARR',
+    // THE WATERFALL, ONCE. It answers "where we stand" and the top-level "why" in the
+    // same picture — the net move and the components that made it — so there is no
+    // second bridge anywhere in this view.
+    mb_move: {
+      subtitle: 'Opening ARR → movements → closing ARR · the net move and its components',
       headline: {
         value: money(ARR_BRIDGE.closing.value),
         delta: { text: `▲ ${money(arrNet)} net new`, tone: 'good' },
         note: `from ${money(ARR_BRIDGE.opening.value)} opening`,
       },
       panels: [{ atom: 'bridge', label: 'ARR build', data: ARR_BRIDGE }],
-      takeaway: `ARR closed at ${money(ARR_BRIDGE.closing.value)}, up ${money(arrNet)}. Gross additions of ${money(arrGross)} did the work and ${money(arrLost)} leaked back out — so about ${arrKept}% of what was won was kept.`,
+      takeaway: `ARR closed at ${money(ARR_BRIDGE.closing.value)}, up ${money(arrNet)}. Gross additions of ${money(arrGross)} did the work and ${money(arrLost)} leaked back out, so about ${arrKept}% of what was won was kept. Within that, ${arrBiggestCut.label} is the largest single drag at ${money(Math.abs(arrBiggestCut.delta))} — more than Expansion adds at ${money(arrExpansion)}.`,
     },
 
-    mb_why: {
-      subtitle: 'Which components drove the move · same bridge, movements in focus',
+    // THE DIMENSIONAL WHY — one step down, not the same chart again. The waterfall
+    // already said which component; this says which segment inside that component.
+    mb_why_dim: {
+      subtitle: `${arrBiggestCut.label} by segment · where the ${money(Math.abs(arrBiggestCut.delta))} went`,
+      panels: [
+        {
+          atom: 'rankedBars',
+          label: `${arrBiggestCut.label} split by segment`,
+          data: { bars: ARR_CHURN_BY_SEGMENT, averageLabel: 'avg', unit: '' },
+        },
+      ],
+      takeaway: `${arrWorstChurn.label} accounts for ${money(arrWorstChurn.value)} of the ${money(arrChurnSplitTotal)} churned — ${arrWorstChurnShare}% of the loss from the smallest accounts. The churn line on the bridge is really an SMB retention problem, which is a different fix from an enterprise one.`,
+    },
+
+    // THE PROJECTION — the same waterfall with a projected closing bar added. Its own
+    // beat, because a forecast is a different claim from a measurement and carries a
+    // different confidence stamp.
+    mb_ahead: {
+      subtitle: 'Same bridge, carried forward one period at this quarter’s run-rate',
       panels: [
         {
           atom: 'bridge',
-          label: 'Components of the move',
-          // The same walk, deliberately: "why" isn't a different chart, it's the same
-          // bridge read one bar at a time. The projected close rides HERE rather than
-          // as its own section — `mb_ahead` is optional on a bending recipe, so the
-          // plan doesn't offer it and `beatsInPlan` won't let the view invent it.
+          label: 'Projected next close',
           data: { ...ARR_BRIDGE, projected: { label: 'Next close', value: arrProjected } },
         },
       ],
-      takeaway: `${arrBiggestCut.label} is the largest single drag at ${money(Math.abs(arrBiggestCut.delta))} — more than Expansion adds at ${money(arrExpansion)}. Holding this quarter's mix puts the next close near ${money(arrProjected)}, which is directional: it assumes the same mix repeats.`,
+      takeaway: `Holding this quarter's mix puts the next close near ${money(arrProjected)}. Directional, not measured: it assumes New, Expansion, Contraction and Churn all repeat at the same size, which is exactly what the ${arrBiggestCut.label} split suggests is worth changing.`,
     },
   },
 
@@ -595,12 +631,12 @@ const REVENUE_ARR_BUILD: ViewFixture = {
       title: 'Ask about this view',
       body: [
         'Ask across the whole bridge, or select a section to scope the question to it.',
-        'Bridge questions are usually about one component — which movement, and why it is that size next to the others.',
+        'The waterfall answers which component; the ranked split answers which segment inside it. Most follow-ups are one of those two levels.',
       ],
     },
-    mb_stand: {
-      scopeLabel: 'deepen · the balance',
-      title: 'The move, start to end — deeper',
+    mb_move: {
+      scopeLabel: 'deepen · the move',
+      title: 'The move and its components — deeper',
       body: [
         `${money(ARR_BRIDGE.opening.value)} opening to ${money(ARR_BRIDGE.closing.value)} closing, a net ${money(arrNet)}.`,
         `The net is small next to the gross: ${money(arrGross)} in, ${money(arrLost)} out. A bridge is the only shape that shows both at once — a trend line would show the ${money(arrNet)} and hide the rest.`,
@@ -610,16 +646,28 @@ const REVENUE_ARR_BUILD: ViewFixture = {
         takeaway: `About ${arrKept}%. Gross additions of ${money(arrGross)} against ${money(arrLost)} of contraction and churn, leaving ${money(arrNet)} net.`,
       },
     },
-    mb_why: {
-      scopeLabel: 'deepen · components',
-      title: 'Which components drove it — deeper',
+    mb_why_dim: {
+      scopeLabel: 'deepen · segment split',
+      title: `Which segment drove ${arrBiggestCut.label} — deeper`,
       body: [
-        `${arrBiggestCut.label} at ${money(Math.abs(arrBiggestCut.delta))} is the largest reduction, and it outweighs Expansion's ${money(arrExpansion)}.`,
-        'New business is carrying the quarter. That is the reading worth acting on: the installed base is not compounding on its own, because retention losses consume most of what expansion adds.',
+        `${arrWorstChurn.label} is ${arrWorstChurnShare}% of the churn at ${money(arrWorstChurn.value)}, against ${money(ARR_CHURN_BY_SEGMENT[2].value)} from Enterprise.`,
+        'The bars sum to the churn bar on the bridge above, so the two sections are the same fact at two depths rather than two measurements that might disagree.',
       ],
       promotedSection: {
-        question: 'Is the base compounding without new sales?',
-        takeaway: `Not yet. Expansion adds ${money(arrExpansion)} while contraction and churn remove ${money(arrLost)}, so the base is net negative without New. Growth is acquisition-led this quarter.`,
+        question: 'Is churn a product problem or a segment problem?',
+        takeaway: `A segment problem. ${arrWorstChurn.label} contributes ${arrWorstChurnShare}% of churn while Enterprise contributes ${Math.round((ARR_CHURN_BY_SEGMENT[2].value / arrChurnSplitTotal) * 100)}% — the same product, very different retention.`,
+      },
+    },
+    mb_ahead: {
+      scopeLabel: 'deepen · the projection',
+      title: 'The projected close — deeper',
+      body: [
+        `${money(arrProjected)} next period, from ${money(ARR_BRIDGE.closing.value)} plus another ${money(arrNet)} of net new.`,
+        `The projection assumes the mix repeats. It is the weakest claim in the view, which is why it is stamped directional — and the ${arrWorstChurn.label} concentration is the reason to expect the mix to change rather than repeat.`,
+      ],
+      promotedSection: {
+        question: 'What would fixing SMB churn do to the projection?',
+        takeaway: `Halving ${arrWorstChurn.label} churn would add roughly ${money(Math.round((arrWorstChurn.value / 2) * 100) / 100)} a quarter, taking the next close nearer ${money(Math.round((arrProjected + arrWorstChurn.value / 2) * 100) / 100)}. Directional.`,
       },
     },
   },
@@ -652,22 +700,21 @@ const plCutShare = Math.round((Math.abs(plBiggestCut.delta) / plCosts) * 100)
 const PL_BUILD: ViewFixture = {
   subtitle: 'how net profit moved, quarter to quarter',
   meta: 'P&L workflow · profit bridge · opening → closing',
+  // ONE WATERFALL, AND NOTHING ELSE. No `mb_why_dim` fixture on purpose: the P&L
+  // bridge's components already ARE the functions (revenue, COGS, S&M, R&D), so
+  // "which dimension drove the biggest component" has no answer that the waterfall
+  // hasn't given. The recipe offers the beat; this workflow declines it, which is
+  // exactly what an optional beat with no fixture expresses.
   beats: {
-    mb_stand: {
-      subtitle: 'Opening net profit → movements → closing net profit',
+    mb_move: {
+      subtitle: 'Opening net profit → movements → closing net profit · the move and its lines',
       headline: {
         value: money(PL_BRIDGE.closing.value),
         delta: { text: `▲ ${money(plNet)} vs last quarter`, tone: 'good' },
         note: `from ${money(PL_BRIDGE.opening.value)} opening`,
       },
       panels: [{ atom: 'bridge', label: 'Net profit bridge', data: PL_BRIDGE }],
-      takeaway: `Net profit closed at ${money(PL_BRIDGE.closing.value)}, up ${money(plNet)}. Revenue added ${money(plRevenue)} and cost growth took back ${money(plCosts)} of it — so the quarter converted about ${plConversion}% of its revenue gain into profit.`,
-    },
-
-    mb_why: {
-      subtitle: 'Which lines drove the move · same bridge, components in focus',
-      panels: [{ atom: 'bridge', label: 'Components of the move', data: PL_BRIDGE }],
-      takeaway: `${plBiggestCut.label} is the largest single drag at ${money(Math.abs(plBiggestCut.delta))} — roughly ${plCutShare}% of all cost growth, more than COGS and R&D together. The increase is concentrated in go-to-market rather than spread across the P&L.`,
+      takeaway: `Net profit closed at ${money(PL_BRIDGE.closing.value)}, up ${money(plNet)}. Revenue added ${money(plRevenue)} and cost growth took back ${money(plCosts)}, so the quarter converted about ${plConversion}% of its revenue gain into profit. ${plBiggestCut.label} is the largest single drag at ${money(Math.abs(plBiggestCut.delta))} — roughly ${plCutShare}% of all cost growth, more than COGS and R&D together.`,
     },
   },
 
@@ -676,32 +723,20 @@ const PL_BUILD: ViewFixture = {
       scopeLabel: 'deepen · whole view',
       title: 'Ask about this view',
       body: [
-        'Ask across the whole bridge, or select a section to scope the question to it.',
+        'Ask across the whole bridge, or select the section to scope the question to it.',
         'On a profit bridge the useful questions are about conversion: how much of the revenue gain reached the bottom line, and what consumed the rest.',
       ],
     },
-    mb_stand: {
-      scopeLabel: 'deepen · the balance',
+    mb_move: {
+      scopeLabel: 'deepen · the move',
       title: 'The move, quarter to quarter — deeper',
       body: [
-        `${money(PL_BRIDGE.opening.value)} to ${money(PL_BRIDGE.closing.value)}, a net ${money(plNet)}.`,
-        `Revenue is the only positive movement. Every other line is a cost that grew, which is why the closing balance sits much closer to the opening than the ${money(plRevenue)} revenue gain alone would suggest.`,
+        `${money(PL_BRIDGE.opening.value)} to ${money(PL_BRIDGE.closing.value)}, a net ${money(plNet)}. ${plBiggestCut.label} grew ${money(Math.abs(plBiggestCut.delta))}, against ${money(0.11)} in COGS and ${money(0.09)} in R&D.`,
+        `Revenue is the only positive movement; every other line is a cost that grew. That is why the closing balance sits much closer to the opening than the ${money(plRevenue)} revenue gain alone would suggest — and why the incremental spend going to go-to-market is the decision worth examining, in Acquisition rather than here.`,
       ],
       promotedSection: {
         question: 'How much of the revenue gain reached profit?',
-        takeaway: `${plConversion}% — ${money(plNet)} of the ${money(plRevenue)} increase, with ${money(plCosts)} absorbed by cost growth.`,
-      },
-    },
-    mb_why: {
-      scopeLabel: 'deepen · components',
-      title: 'Which lines moved — deeper',
-      body: [
-        `${plBiggestCut.label} grew ${money(Math.abs(plBiggestCut.delta))}, against ${money(0.11)} in COGS and ${money(0.09)} in R&D.`,
-        'Sales and marketing is where the incremental spend went. Whether that was the right call depends on what it bought — which is an Acquisition question, not a P&L one.',
-      ],
-      promotedSection: {
-        question: 'Is cost growth broad or concentrated?',
-        takeaway: `Concentrated. ${plBiggestCut.label} accounts for roughly ${plCutShare}% of all cost growth this quarter.`,
+        takeaway: `${plConversion}% — ${money(plNet)} of the ${money(plRevenue)} increase, with ${money(plCosts)} absorbed by cost growth, roughly ${plCutShare}% of it in ${plBiggestCut.label}.`,
       },
     },
   },
@@ -730,26 +765,53 @@ const expLost = Math.abs(sumOf(EXPANSION_BRIDGE.movements, -1))
 const expNet = Math.round((EXPANSION_BRIDGE.closing.value - EXPANSION_BRIDGE.opening.value) * 100) / 100
 const expGivenBack = Math.round((expLost / expGross) * 100)
 const crossVsUp = Math.round((expCross / expUpsell) * 100)
+const expBiggestAdd = largest(EXPANSION_BRIDGE.movements, 1)
+
+/**
+ * Upsell — the biggest ADD on this bridge — split by segment. The dimensional why.
+ *
+ * Sums to the upsell bar, so the split and the bridge reconcile. Note this decomposes
+ * the largest ADDITION rather than the largest reduction: on an expansion bridge the
+ * interesting question is where the growth came from, not where the leak was.
+ */
+const EXP_UPSELL_BY_SEGMENT = [
+  { label: 'Enterprise', value: 0.08 },
+  { label: 'Mid-market', value: 0.04 },
+  { label: 'SMB', value: 0.02 },
+]
+const expUpsellSplitTotal =
+  Math.round(EXP_UPSELL_BY_SEGMENT.reduce((t, b) => t + b.value, 0) * 100) / 100
+const expBestUpsell = EXP_UPSELL_BY_SEGMENT[0]
+const expBestUpsellShare = Math.round((expBestUpsell.value / expUpsellSplitTotal) * 100)
 
 const EXPANSION_BUILD: ViewFixture = {
   subtitle: 'how net expansion MRR moved this quarter',
   meta: 'Expansion workflow · expansion bridge · opening → closing',
   beats: {
-    mb_stand: {
-      subtitle: 'Opening expansion MRR → movements → closing',
+    // The waterfall, once — net move and components together.
+    mb_move: {
+      subtitle: 'Opening expansion MRR → movements → closing · the move and its motions',
       headline: {
         value: money(EXPANSION_BRIDGE.closing.value),
         delta: { text: `▲ ${money(expNet)} net`, tone: 'good' },
         note: `from ${money(EXPANSION_BRIDGE.opening.value)} opening`,
       },
       panels: [{ atom: 'bridge', label: 'Net expansion MRR', data: EXPANSION_BRIDGE }],
-      takeaway: `Expansion MRR closed at ${money(EXPANSION_BRIDGE.closing.value)}, up ${money(expNet)}. Upsell and cross-sell added ${money(expGross)}; downgrades and churn took back ${money(expLost)}, which is ${expGivenBack}% of everything the motion won.`,
+      takeaway: `Expansion MRR closed at ${money(EXPANSION_BRIDGE.closing.value)}, up ${money(expNet)}. Upsell and cross-sell added ${money(expGross)}; downgrades and churn took back ${money(expLost)}, which is ${expGivenBack}% of everything the motion won. Upsell is doing most of the work at ${money(expUpsell)} — more than twice cross-sell's ${money(expCross)}.`,
     },
 
-    mb_why: {
-      subtitle: 'Which motions drove the move · same bridge, components in focus',
-      panels: [{ atom: 'bridge', label: 'Components of the move', data: EXPANSION_BRIDGE }],
-      takeaway: `Upsell is doing most of the work at ${money(expUpsell)} — more than twice cross-sell's ${money(expCross)}. Seats are growing faster than product attach, which says where the next motion has room.`,
+    // The dimensional why: the largest ADD split by segment. On an expansion bridge the
+    // question worth one more level is where the growth came from.
+    mb_why_dim: {
+      subtitle: `${expBiggestAdd.label} by segment · where the ${money(expBiggestAdd.delta)} came from`,
+      panels: [
+        {
+          atom: 'rankedBars',
+          label: `${expBiggestAdd.label} split by segment`,
+          data: { bars: EXP_UPSELL_BY_SEGMENT, averageLabel: 'avg', unit: '' },
+        },
+      ],
+      takeaway: `${expBestUpsell.label} is ${expBestUpsellShare}% of upsell at ${money(expBestUpsell.value)}, against ${money(EXP_UPSELL_BY_SEGMENT[2].value)} from SMB. Expansion is an enterprise motion here — which is the opposite end of the book from where churn concentrates.`,
     },
   },
 
@@ -759,31 +821,31 @@ const EXPANSION_BUILD: ViewFixture = {
       title: 'Ask about this view',
       body: [
         'Ask across the whole bridge, or select a section to scope the question to it.',
-        'Expansion questions usually compare the two directions: what the motion won against what the base gave back.',
+        'The waterfall answers which motion; the ranked split answers which segment inside it.',
       ],
     },
-    mb_stand: {
-      scopeLabel: 'deepen · the balance',
-      title: 'The move — deeper',
+    mb_move: {
+      scopeLabel: 'deepen · the move',
+      title: 'The move and its motions — deeper',
       body: [
-        `${money(EXPANSION_BRIDGE.opening.value)} to ${money(EXPANSION_BRIDGE.closing.value)}, a net ${money(expNet)}.`,
-        `Gross expansion of ${money(expGross)} against ${money(expLost)} of downgrade and churn. The net is positive, but the retention side is consuming ${expGivenBack}% of the motion's output.`,
-      ],
-      promotedSection: {
-        question: 'Is expansion outrunning contraction?',
-        takeaway: `Yes, but not comfortably: ${money(expGross)} won against ${money(expLost)} lost, a net ${money(expNet)}.`,
-      },
-    },
-    mb_why: {
-      scopeLabel: 'deepen · motions',
-      title: 'Which motions moved it — deeper',
-      body: [
-        `Upsell ${money(expUpsell)}, cross-sell ${money(expCross)} — seats are growing faster than product attach.`,
-        'That mix matters for where to invest: upsell scales with the existing motion, while cross-sell needs a second product to land. The current split says the second one is under-worked.',
+        `${money(EXPANSION_BRIDGE.opening.value)} to ${money(EXPANSION_BRIDGE.closing.value)}, a net ${money(expNet)}. Upsell ${money(expUpsell)}, cross-sell ${money(expCross)}.`,
+        `Gross expansion of ${money(expGross)} against ${money(expLost)} of downgrade and churn — the retention side is consuming ${expGivenBack}% of the motion's output. The mix matters for where to invest: upsell scales with the existing motion, cross-sell needs a second product to land.`,
       ],
       promotedSection: {
         question: 'Upsell or cross-sell — which is under-worked?',
         takeaway: `Cross-sell. It contributes ${money(expCross)} against upsell's ${money(expUpsell)} — about ${crossVsUp}% as much, into a comparable installed base.`,
+      },
+    },
+    mb_why_dim: {
+      scopeLabel: 'deepen · segment split',
+      title: `Which segment drove ${expBiggestAdd.label} — deeper`,
+      body: [
+        `${expBestUpsell.label} is ${expBestUpsellShare}% of upsell at ${money(expBestUpsell.value)}; SMB contributes ${money(EXP_UPSELL_BY_SEGMENT[2].value)}.`,
+        'The bars sum to the upsell bar on the bridge above, so the two sections are the same fact at two depths. Read together with the ARR bridge, the picture is that the top of the book expands and the bottom of it churns.',
+      ],
+      promotedSection: {
+        question: 'Does expansion come from the same segments that churn?',
+        takeaway: `No — the opposite. ${expBestUpsell.label} drives ${expBestUpsellShare}% of upsell while SMB drives most of the churn. The book is growing at the top and leaking at the bottom.`,
       },
     },
   },

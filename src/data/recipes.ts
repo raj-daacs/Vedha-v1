@@ -85,12 +85,14 @@ export const RECIPES: RecipeBook = [
       intent_signals: ['bridge', 'waterfall', 'arr build', 'mrr movement', 'net new', 'how did', 'move', 'expansion', 'contraction'],
     },
     beats: [
-      { id: 'mb_stand', category: 'stand', question: 'Where the balance moved, start to end', reads: ['opening balance', 'closing balance'], builds: 'waterfall', atoms: ['Bridge'], confidence: 'from_data' },
-      { id: 'mb_why', category: 'why', question: 'Which components drove the move?', reads: ['bridge components'], builds: 'component bars', atoms: ['Bridge'], confidence: 'from_data' },
-      { id: 'mb_ahead', category: 'ahead', question: 'Projected next-period balance', reads: ['run-rate'], builds: 'projection', atoms: ['Bridge'], confidence: 'directional', optional: true },
+      // The waterfall FUSES stand + top-level why: it shows the net move AND its components at once.
+      { id: 'mb_move', category: 'stand', question: 'How {metric} moved, opening to closing', reads: ['opening balance', 'closing balance', 'movement components'], builds: 'waterfall — net movement and its components in one view', atoms: ['Bridge'], confidence: 'from_data' },
+      // The ADDITIONAL why is the dimensional split of the dominant component (not a second waterfall). Optional: only where a slicing dimension is meaningful.
+      { id: 'mb_why_dim', category: 'why', question: 'Which {dimension} drove the biggest component?', reads: ['dominant component', 'segment'], builds: 'ranked breakdown of the dominant component by dimension', atoms: ['RankedBars'], fills_from: ['RS3', 'RS5'], confidence: 'from_data', optional: true },
+      { id: 'mb_ahead', category: 'ahead', question: 'Projected next-period balance', reads: ['run-rate'], builds: 'waterfall with a projected closing bar', atoms: ['Bridge'], confidence: 'directional', optional: true },
     ],
     four_question_fit: 'bend',
-    narration_note: 'Questions bend to a movement shape — "why" becomes "which component".',
+    narration_note: 'The waterfall fuses "where we stand" and the top-level "why" (it shows the net move and its components at once), so it renders ONCE. The additional "why" is the dimensional split of the dominant component (ranked bars, optional). Never render the waterfall twice.',
     producibility: 'needs_atom',
     requires: ['GAP-A1', 'GAP-A2', 'GAP-J1'],
   },
