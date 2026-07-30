@@ -18,7 +18,7 @@ import { deriveSpine } from './composePlan'
 import type { ComposeContext } from './models'
 import { shortRecipeName } from './templates'
 import { ALTITUDES, RECIPES_BY_ID, getWorkflow, workflowsForLevel } from '../data/recipes'
-import { selectRecipe } from '../data/selectRecipe'
+import { resolve } from '../data/resolve'
 import { PERIODS, PERIOD_LABELS } from '../data/scope'
 import type { Altitude, Period, RecipeId, WorkflowName } from '../data/recipe_schema'
 
@@ -44,8 +44,12 @@ export interface EditAModel {
   periodLabels: Record<Period, string>
   /** Only the shapes this workflow can produce. */
   recipes: EditARecipeOption[]
-  /** What the current text resolves to here. */
-  resolvedId: RecipeId | null
+  /**
+   * What the current text resolves to here. Never null: the resolver always lands
+   * somewhere defensible within the workflow, so the modal has no "names nothing"
+   * state to render any more.
+   */
+  resolvedId: RecipeId
   note: string
 }
 
@@ -73,7 +77,20 @@ function summarise(recipeId: RecipeId): string {
 
 export function composeEditA(context: ComposeContext, intent: string): EditAModel {
   const eligible = getWorkflow(context.workflow).eligible
-  const resolvedId = selectRecipe(intent, context.workflow).recipe?.id ?? null
+
+  // Only `.recipe` is read here, and that field doesn't depend on the touched flags —
+  // they only ever decide output and period. So the modal can ask "what does this
+  // text mean here?" without threading pick provenance through the compose layer.
+  const resolvedId = resolve(
+    {
+      workflow: context.workflow,
+      output: context.output,
+      period: context.period,
+      outputTouched: false,
+      periodTouched: false,
+    },
+    intent,
+  ).recipe
 
   return {
     intent,

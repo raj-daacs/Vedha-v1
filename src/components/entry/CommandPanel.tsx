@@ -108,16 +108,11 @@ export function CommandPanel() {
           <ExamplePrompts />
         </div>
 
-        {/* An ask that matches no report shape. Vedha says so instead of composing
-            a plan it has no reason to believe in. */}
-        {state.unrecognised && (
-          <div className="cmd__unmatched">
-            <div className="cmd__unmatched-eyebrow">no shape recognised</div>
-            I don't recognise a report shape in that yet. Try naming what you want to
-            see — a trend, a drop-off, a movement between two periods, a retention
-            curve, or how sticky something is.
-          </div>
-        )}
+        {/* The no-match panel that used to live here is gone. Entry has no dead end
+            any more: the operator always has a scope, so even a vague or off-domain
+            ask resolves to a defensible query. Whatever had to be assumed is stated
+            at the Build step, where it can be corrected in a tap — which is a better
+            place to negotiate than a refusal at the front door. */}
       </div>
     </div>
   )

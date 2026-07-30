@@ -131,12 +131,10 @@ export function EditIntentModal() {
           )}
         </div>
 
-        {!model.resolvedId && !override && (
-          <p className="modal__warning">
-            This wording doesn’t name a shape {model.workflow} produces. Pick one above,
-            or reword the ask.
-          </p>
-        )}
+        {/* No "names nothing" warning any more: the resolver always lands on a shape
+            this workflow produces, so there is nothing to warn about. Where it fell
+            back to the workflow's primary lens, the Build step says so — and says it
+            where the operator can act on it. */}
 
         <div className="modal__actions">
           <button

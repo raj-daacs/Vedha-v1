@@ -1,26 +1,22 @@
-// selectRecipe.ts
+// textScoring.ts
 // ---------------------------------------------------------------------------
-// COMPOSER STEP 1 — recognise the shape of the report the operator is asking for,
-// and hand back the recipe that renders it.
+// HOW MUCH DOES THIS TEXT LOOK LIKE A REQUEST FOR THIS SHAPE?
 //
-// This is the "Recognising the shape → [recipe name]" beat the user watches
-// resolve during the narrated build. It is deliberately a keyword/signal matcher,
-// not a model call: the prototype has no backend, and the design brief is explicit
-// that plan composition should be recipe-driven rather than hand-wired.
+// Extracted verbatim from the old `selectRecipe.ts`, whose outer shell the
+// resolver replaced. The scoring model is unchanged and still the thing worth
+// trusting — it's a keyword/signal matcher with published weights and a test
+// table, not a model call. The prototype has no backend, and the brief is
+// explicit that plan composition should be recipe-driven rather than hand-wired.
 //
-// What it is NOT: routing. This picks the SKELETON. Filling each beat with a
-// reasoned verdict (`Beat.fills_from` → the RS nodes) is a separate track.
+// What this is NOT: the resolver. This only scores text against a recipe's
+// declared signals. Deciding WHICH recipe wins — and what happens when the text
+// says nothing at all — is `resolve.ts`, which owns the precedence rules.
 //
-// ── Precedence ──────────────────────────────────────────────────────────────
-// THE SELECTED WORKFLOW IS AUTHORITATIVE. It decides which recipes are eligible;
-// the free text only refines within that set. Text can never pull the operator
-// into a shape their workflow doesn't produce — that used to happen, and it left
-// the header, the context pill, and the plan disagreeing about what was being
-// looked at. When the text names a shape this workflow can't render, the answer
-// is no-match plus a pointer to where it *would* have matched.
+// What this is also NOT: routing. Scoring picks the SKELETON. Filling each beat
+// with a reasoned verdict (`Beat.fills_from` → the RS nodes) is a separate track.
 // ---------------------------------------------------------------------------
 
-import { RECIPES, RECIPES_BY_ID, WORKFLOWS, getWorkflow } from './recipes'
+import { RECIPES, RECIPES_BY_ID } from './recipes'
 import type { Recipe, RecipeId, WorkflowName } from './recipe_schema'
 import { semanticsFor } from './semanticModel'
 
@@ -29,36 +25,18 @@ export interface RecipeMatch {
   score: number
   /** the raw `trigger.intent_signals` entries that fired, for narration + debugging */
   matchedSignals: string[]
-}
-
-/** Where an ask would have landed, had the operator been standing somewhere else. */
-export interface WorkflowSuggestion {
-  workflow: WorkflowName
-  recipe: Recipe
-}
-
-export interface SelectRecipeResult {
-  /** null when nothing eligible matched confidently — Vedha should say so, not guess. */
-  recipe: Recipe | null
-  score: number
-  matchedSignals: string[]
-  /** runners-up within this workflow, best first. Feeds the Edit-A recipe list. */
-  alternatives: RecipeMatch[]
   /**
-   * Only populated on a no-match: workflows where this same text WOULD have
-   * resolved. Lets the no-match state ask "did you mean Monetisation?" rather than
-   * only "be more specific".
+   * How many WHOLE signal phrases the text contained, and how many distinct words
+   * merely overlapped. Kept apart from `score` because they answer a different
+   * question: not "how strong?" but "how deliberate?".
    *
-   * NOT YET RENDERED — surfacing it needs a CommandPanel change.
+   * The resolver needs that distinction. A single incidental word clears FLOOR on its
+   * own (one overlap already scores TOKEN_OVERLAP), which is fine when only one shape
+   * is eligible and meaningless anyway, but not good enough to choose BETWEEN two
+   * shapes the operator's workflow can both produce.
    */
-  suggestedWorkflows: WorkflowSuggestion[]
-  /**
-   * True when the recipe was reached by elimination, not recognition: the ask was
-   * on-domain but named no shape, and the workflow offers exactly one. Worth
-   * knowing because the build screen currently narrates "Recognising the shape",
-   * which overstates what happened here.
-   */
-  resolvedByElimination: boolean
+  phraseHits: number
+  tokenHits: number
 }
 
 // ---------------------------------------------------------------------------
@@ -75,12 +53,13 @@ const TOKEN_OVERLAP = 2
  *
  * Note what this does and doesn't protect against. It rejects an ask with no
  * signal at all; it does NOT reject an ask carried by a single incidental word,
- * because one overlap already scores TOKEN_OVERLAP. The real safety now comes from
- * `a workflow's eligible list` narrowing the field to one or two candidates before any text
- * is scored — a mis-scored ask can at worst pick the wrong one of two shapes the
- * operator's own workflow produces, never a shape from somewhere else entirely.
+ * because one overlap already scores TOKEN_OVERLAP. The real safety comes from the
+ * workflow's own `eligible` list narrowing the field to one or two candidates
+ * before any text is scored — a mis-scored ask can at worst pick the wrong one of
+ * two shapes the operator's own workflow produces, never a shape from somewhere
+ * else entirely.
  */
-const FLOOR = 2
+export const FLOOR = 2
 
 /** Shortest alternate we'll treat as a phrase — below this it's just a token. */
 const MIN_PHRASE_LEN = 3
@@ -107,11 +86,11 @@ const STOPWORDS = new Set([
 // ---------------------------------------------------------------------------
 
 /** Lowercase, drop punctuation, collapse whitespace. Space-padded for word-safe `includes`. */
-function normalise(text: string): string {
+export function normalise(text: string): string {
   return ` ${text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `
 }
 
-function tokenise(normalised: string): string[] {
+export function tokenise(normalised: string): string[] {
   return normalised.split(' ').filter((t) => t.length > 0 && !STOPWORDS.has(t))
 }
 
@@ -142,17 +121,8 @@ function fuzzyEqual(a: string, b: string): boolean {
 // Scoring
 // ---------------------------------------------------------------------------
 
-interface SignalScore {
-  score: number
-  matched: string[]
-  /** How many whole signal phrases the intent contained. */
-  phraseHits: number
-  /** How many distinct intent words matched a signal word. */
-  tokenHits: number
-}
-
-/** Score one recipe's trigger against the intent. WorkflowName is NOT folded in here. */
-function scoreSignals(recipe: Recipe, intentNorm: string, intentTokens: string[]): SignalScore {
+/** Score one recipe's trigger against the intent. The workflow is NOT folded in here. */
+function scoreSignals(recipe: Recipe, intentNorm: string, intentTokens: string[]) {
   let score = 0
   let phraseHits = 0
   let tokenHits = 0
@@ -194,19 +164,15 @@ function scoreSignals(recipe: Recipe, intentNorm: string, intentTokens: string[]
   return { score, matched, phraseHits, tokenHits }
 }
 
-// ---------------------------------------------------------------------------
-// The entry point
-// ---------------------------------------------------------------------------
-
 /**
  * Rank the recipes a given workflow can produce against the intent.
  *
- * The candidate list IS the workflow constraint — nothing outside it is scored,
- * so no amount of matching text can reach a shape this workflow doesn't render.
- * Every eligible recipe comes back, scored (including zero), so the caller can see
- * the top score and decide whether it cleared the floor.
+ * The candidate list IS the workflow constraint — nothing outside it is scored, so
+ * no amount of matching text can reach a shape this workflow doesn't render. Every
+ * eligible recipe comes back, scored (including zero), so the caller can see the
+ * top score and decide whether it cleared the floor.
  */
-function rankWithin(
+export function rankWithin(
   candidateIds: readonly RecipeId[],
   intentNorm: string,
   intentTokens: string[],
@@ -223,6 +189,8 @@ function rankWithin(
             recipe,
             score: signal.score,
             matchedSignals: signal.matched,
+            phraseHits: signal.phraseHits,
+            tokenHits: signal.tokenHits,
           } satisfies RecipeMatch,
         },
       ]
@@ -232,6 +200,10 @@ function rankWithin(
     .sort((a, b) => b.match.score - a.match.score || a.rank - b.rank)
     .map((entry) => entry.match)
 }
+
+// ---------------------------------------------------------------------------
+// Is the operator talking about their business at all?
+// ---------------------------------------------------------------------------
 
 /** Every phrase and word that appears in ANY recipe's signals. Built once. */
 const ALL_SIGNAL_PHRASES: string[] = RECIPES.flatMap((recipe) =>
@@ -243,8 +215,12 @@ const ALL_SIGNAL_PHRASES: string[] = RECIPES.flatMap((recipe) =>
  * asking a question. They have to be excluded explicitly because several signals
  * mention time ("cohort / by signup month", "decay / churn over time", "nrr by
  * age"), which would otherwise make a bare "this month" look on-domain.
+ *
+ * Exported because the resolver reads periods out of the same text, where these
+ * words are exactly the signal it wants — the two uses are complementary, not
+ * contradictory: a period tells you WHEN, never WHAT.
  */
-const TIME_WORDS = new Set([
+export const TIME_WORDS = new Set([
   'day', 'days', 'daily',
   'week', 'weeks', 'weekly',
   'month', 'months', 'monthly',
@@ -262,16 +238,18 @@ const ALL_SIGNAL_TOKENS: Set<string> = new Set(
 /**
  * Is the operator asking about their business at all?
  *
- * This is the difference between "you asked something analytical, and this
- * workflow only does one thing, so I'll assume you meant that" and "I have no
- * idea what you want". It's what lets *"show me this month status"* on Acquisition
- * resolve to the funnel — "status" is analytical vocabulary, Acquisition renders
- * exactly one shape, so there is nothing to be ambiguous about — while
- * *"what colour is the sky"* still gets the ask-again state.
+ * This separates "you asked something analytical, so I'll analyse what you're
+ * looking at" from "I have no idea what you want". Under the resolver both still
+ * produce a query — the scope carries it either way — but only the second is
+ * flagged prominently, so the distinction has to be drawn somewhere.
  *
  * A bare period ("this month") is NOT on-domain on its own — see TIME_WORDS.
  */
-function isOnDomain(intentNorm: string, intentTokens: string[], workflow: WorkflowName): boolean {
+export function isOnDomain(
+  intentNorm: string,
+  intentTokens: string[],
+  workflow: WorkflowName,
+): boolean {
   const meaningful = intentTokens.filter((token) => !TIME_WORDS.has(token))
   if (meaningful.length === 0) return false
 
@@ -295,82 +273,4 @@ function isOnDomain(intentNorm: string, intentTokens: string[], workflow: Workfl
       .filter((token) => !TIME_WORDS.has(token)),
   )
   return meaningful.some((token) => vocabulary.has(token))
-}
-
-/**
- * Pick the recipe whose shape best fits what the operator asked for, within the
- * workflow they're standing in.
- *
- * @param intent    the operator's plain-language question
- * @param workflow where they're standing — AUTHORITATIVE. It constrains which
- *                  recipes are eligible; the text only refines within that set.
- *
- * Returns `recipe: null` when nothing eligible matched confidently. That's a real
- * answer, not a failure: Vedha asks rather than composing a plan whose own header
- * would contradict the context label. On a no-match, `suggestedWorkflows` names
- * anywhere the same ask would have landed.
- */
-export function selectRecipe(intent: string, workflow: WorkflowName): SelectRecipeResult {
-  const intentNorm = normalise(intent)
-  const intentTokens = tokenise(intentNorm)
-
-  const eligibleIds = getWorkflow(workflow).eligible
-  const ranked = rankWithin(eligibleIds, intentNorm, intentTokens)
-  const [best, ...rest] = ranked
-
-  // The text named a shape this workflow produces.
-  if (best && best.score >= FLOOR) {
-    return {
-      recipe: best.recipe,
-      score: best.score,
-      matchedSignals: best.matchedSignals,
-      alternatives: rest.filter((match) => match.score >= FLOOR),
-      suggestedWorkflows: [],
-      resolvedByElimination: false,
-    }
-  }
-
-  // Nothing here cleared the floor. Whichever way this resolves, it's worth knowing
-  // where the ask WOULD have landed — the operator may simply be standing in the
-  // wrong place, and that's a far more useful thing to say than "be more specific".
-  const suggestedWorkflows: WorkflowSuggestion[] = WORKFLOWS.map((w) => w.name).filter(
-    (candidate) => candidate !== workflow,
-  ).flatMap((candidate) => {
-    const [elsewhere] = rankWithin(
-      getWorkflow(candidate).eligible,
-      intentNorm,
-      intentTokens,
-    ).filter((match) => match.score >= FLOOR)
-    return elsewhere ? [{ workflow: candidate, recipe: elsewhere.recipe }] : []
-  })
-
-  // If the workflow renders exactly one shape and the ask was at least about the
-  // business, there is nothing to be ambiguous about — take it. The workflow is
-  // authoritative, so a shapeless-but-on-domain ask means "analyse what I'm looking
-  // at". Any suggestions ride along, so the UI can still offer the other reading.
-  //
-  // With two or more eligible shapes we do NOT pick: guessing between two plausible
-  // readings is how the operator ends up with a plan they didn't ask for.
-  if (eligibleIds.length === 1 && isOnDomain(intentNorm, intentTokens, workflow)) {
-    const only = RECIPES_BY_ID[eligibleIds[0]]
-    if (only) {
-      return {
-        recipe: only,
-        score: 0,
-        matchedSignals: [],
-        alternatives: [],
-        suggestedWorkflows,
-        resolvedByElimination: true,
-      }
-    }
-  }
-
-  return {
-    recipe: null,
-    score: 0,
-    matchedSignals: [],
-    alternatives: [],
-    suggestedWorkflows,
-    resolvedByElimination: false,
-  }
 }

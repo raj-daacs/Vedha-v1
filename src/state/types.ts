@@ -17,6 +17,8 @@ import type {
   Output,
   Period,
   RecipeId,
+  ResolvedQuery,
+  Source,
   WorkflowName,
 } from '../data/recipe_schema'
 
@@ -36,6 +38,22 @@ export interface AppState {
   output: Output
   period: Period
 
+  /**
+   * Did the operator CHOOSE this output / period, or is it just what the scope
+   * pre-selected?
+   *
+   * Load-bearing, not bookkeeping. The resolver's precedence rules are "explicit
+   * pick beats a text cue" (output) and "text beats the pick" (period) — and a value
+   * that merely equals the scope default is indistinguishable from a deliberate one
+   * without this. It is also what lets the Build step say "you chose Review" rather
+   * than "I assumed Review".
+   *
+   * Both reset when the scope changes, because a default carried over from another
+   * workflow was never a choice about this one.
+   */
+  outputTouched: boolean
+  periodTouched: boolean
+
   /** Live value of the ask field. */
   draftIntent: string
   /** What was actually asked. Empty until SUBMIT_INTENT. */
@@ -48,6 +66,21 @@ export interface AppState {
   recipeId: RecipeId | null
 
   /**
+   * HOW the submitted ask resolved — provenance per field, plus any flags worth
+   * saying out loud. Null before any ask.
+   *
+   * Stored rather than recomposed because it is a fact about a past event: the
+   * operator's picks at the moment they asked. Recomputing it later from current
+   * state would silently relabel "you chose this" as "I assumed this" the instant
+   * they touched a chip.
+   */
+  resolution: {
+    sources: { recipe: Source; output: Source; period: Source }
+    flags: string[]
+    focus?: { dimension?: string; member?: string; note?: string }
+  } | null
+
+  /**
    * How far the narrated build has resolved: -1 idle, 0..n-1 the active step,
    * n = every step done. Lives in state rather than in the component so that
    * re-planning restarts it cleanly and the plan reveal stays derivable.
@@ -55,12 +88,10 @@ export interface AppState {
   buildStep: number
   planRevealed: boolean
 
-  /**
-   * Set when an ask matched no recipe. A real product state, not an error:
-   * Vedha says it can't recognise the shape rather than composing a plan it has
-   * no reason to believe in.
-   */
-  unrecognised: string | null
+  // NOTE: `unrecognised` is gone. Under the resolver there is no such state — the
+  // operator always has a scope, so a vague or even off-domain ask still resolves to
+  // a defensible query. What used to be a dead end on Entry is now the
+  // `off_domain_text` flag, stated plainly at the Build step and correctable there.
 
   /**
    * What the deepen panel is scoped to: a section's beat id, `'root'` for the whole
@@ -121,17 +152,20 @@ export type Action =
   | { type: 'SET_OUTPUT'; output: Output }
   | { type: 'SET_PERIOD'; period: Period }
   /**
-   * Send / Enter / an example card. Carries the intent explicitly so an example
-   * card can submit its own text without a round-trip through draftIntent, and
-   * the resolved recipe so the reducer stays pure (selection happens at the edge).
+   * Send / Enter / a prompt chip. Carries the intent explicitly so a chip can submit
+   * its own text without a round-trip through draftIntent, and the whole
+   * ResolvedQuery so the reducer stays pure — resolution happens at the edge.
+   *
+   * The resolved output and period are applied to state, because after a submit
+   * those ARE the operator's context: if the text said "this month", the chips
+   * should agree with the answer they're about to see.
    */
   | {
       type: 'SUBMIT_INTENT'
       intent: string
-      recipeId: RecipeId | null
-      /** A prompt chip states its own context rather than borrowing the current one. */
+      resolved: ResolvedQuery
+      /** A prompt chip states its own workflow rather than borrowing the current one. */
       workflow?: WorkflowName
-      period?: Period
     }
   /** One tick of the narrated build. */
   | { type: 'BUILD_ADVANCE'; stepCount: number }
