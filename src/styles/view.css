@@ -166,32 +166,167 @@
     transform 0.34s ease;
 }
 
-/* ---- Assembly: the view composing itself ------------------------------------
-   ONLY opacity and transform. Pending sections stay IN FLOW at opacity 0, so the
-   document's height is final from the first frame — no reflow, no scroll jump, and
-   the rigid content column is never involved. Nothing here animates width, height,
-   padding, margin, display, visibility, flex or grid.
+/* ---- Assembly: the view generating itself ------------------------------------
+   THE DOCUMENT GROWS. THIS REPLACES AN EARLIER APPROACH, AND THE REASON MATTERS.
 
-   The base styles are the FINAL state; these rules only describe the entrance. That
-   way the global prefers-reduced-motion block (which flattens all durations) can
-   never strand something mid-animation — and reduced motion also skips the sequence
-   in JS, so every section is revealed on the first render.
+   Sections used to be rendered up front and held at `opacity: 0` in flow, so the
+   document's height was final from the first frame and assembly was pure opacity —
+   no reflow, no scroll jump, guaranteed. That is a genuinely safer animation, and it
+   is also why it never read as an agent working: nothing ever changed size. The view
+   already knew its own shape and was dimming a finished artifact up. An operator
+   reads that as a transition, not as generation, because generation does not know how
+   tall a block is until it has written it.
+
+   So an unwritten section is now ABSENT from the document, the block being written is
+   a `.vskel` placeholder at placeholder height, and the real section replaces it at
+   its own height. The page therefore reflows as it builds — deliberately.
+
+   WHAT THIS DOES NOT GIVE UP: the hard invariant at the top of this file is about the
+   content column's WIDTH under the deepen panel, and it is untouched. `.view` still
+   takes its width from a token. Growth is vertical only, downward, below the reading
+   position — which is the direction a page being written grows anyway.
+
+   Reduced motion still skips the sequence in JS, so the whole view mounts at once and
+   no placeholder is ever seen.
    --------------------------------------------------------------------------- */
 
-.vsection--pending,
+/* The spine is the one thing still revealed by fade: it is a single strip that exists
+   from the first frame and only has to settle, so it has no placeholder state. */
 .view__spine--pending {
   opacity: 0;
   /* A transform, so it cannot shift anything around it. */
-  transform: translateY(8px);
+  transform: translateY(6px);
 }
 
-.vsection--pending {
-  /* Invisible cards must not be clickable. Not a layout property. */
+/* ---- The block being written --------------------------------------------------
+   Shaped from the section's own model (see SectionSkeleton.tsx), so it is not one
+   generic grey card standing in for four different ones.
+
+   Deliberately SHORTER than the section that replaces it. A placeholder that matched
+   the final height exactly would be the old opacity trick wearing a different hat —
+   the point is that the block grows when its content arrives.
+   ------------------------------------------------------------------------- */
+
+@keyframes vskel-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.vskel {
+  border: 1px dashed var(--accent);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  margin-bottom: 22px;
+  background: var(--paper);
+  /* Nothing here is real yet, so nothing here is clickable. */
+  pointer-events: none;
+  animation: vappear 200ms ease-out both;
+}
+
+.vskel__bar {
+  height: 12px;
+  border-radius: var(--r-xs);
+  /* The travelling highlight that says "being written". One shared gradient, sized
+     past the element so the sweep has somewhere to come from and go to. */
+  background: linear-gradient(
+    90deg,
+    var(--accent-tint) 25%,
+    color-mix(in srgb, var(--accent) 26%, var(--accent-tint)) 50%,
+    var(--accent-tint) 75%
+  );
+  background-size: 200% 100%;
+  animation: vskel-shimmer 1.4s linear infinite;
+}
+
+/* Each bar stands in for a specific part, so the placeholder reads as this section
+   rather than as a loading state in general. */
+.vskel__bar--eyebrow {
+  width: 34%;
+  height: 9px;
+  margin-bottom: 14px;
+}
+
+.vskel__bar--title {
+  width: 68%;
+  height: 20px;
+  margin-bottom: 18px;
+}
+
+.vskel__bar--headline {
+  width: 26%;
+  height: 34px;
+  margin-bottom: 18px;
+}
+
+.vskel__bar--takeaway {
+  width: 80%;
+  margin-top: 18px;
+}
+
+.vskel__panels {
+  display: grid;
+  gap: 18px;
+}
+
+.vskel__panels--split {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* A stand-in for a chart. Short enough that the real panel is visibly taller. */
+.vskel__panel {
+  height: 84px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(
+    90deg,
+    var(--accent-tint) 25%,
+    color-mix(in srgb, var(--accent) 20%, var(--accent-tint)) 50%,
+    var(--accent-tint) 75%
+  );
+  background-size: 200% 100%;
+  animation: vskel-shimmer 1.6s linear infinite;
+}
+
+/* ---- "composing 2 of 3" -------------------------------------------------
+   The assembly's own progress, floating over the view rather than in it.
+
+   BOTTOM CENTRE, NOT A CORNER. Right-anchored collides with the deepen panel (the
+   lesson already paid for by `.defissues`), and bottom-left is where that chip
+   sits. Centre is the only edge with nothing else claiming it.
+   ------------------------------------------------------------------------- */
+.view__composing {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  /* Transient by definition — it must never intercept a click meant for the view. */
   pointer-events: none;
 }
 
-.view__spine--pending {
-  transform: translateY(6px);
+.view__composing-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: vpulse 1.6s infinite;
 }
 
 /* Selectable: every section is a way in to a deeper pass on that question. */

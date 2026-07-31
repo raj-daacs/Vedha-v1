@@ -56,6 +56,18 @@ export interface BuildStep {
    * moment that carries the agentic feeling").
    */
   isRecipeStep: boolean
+  /**
+   * How long this step should appear to take, before jitter.
+   *
+   * Authored per step rather than derived, because the composer is the only layer
+   * that knows which beats are real work: reading the semantic layer is heavier than
+   * loading context Vedha already holds, and naming the shape deserves a visible
+   * pause. A single shared interval made the sequence a metronome, which is the
+   * clearest possible tell that nothing is actually running.
+   *
+   * Optional — omit it and the sequence falls back to the base cadence.
+   */
+  dwellMs?: number
 }
 
 /**

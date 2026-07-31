@@ -172,14 +172,28 @@ export function composeBuild(
     // own word for how it draws (funnel / bridge / cohort / scorecard / sensitivity).
     // It replaces the schema's former `spine.rendered_as`, which carried the same
     // vocabulary from the other side of the declaration.
+    //
+    // Dwells are weighted by how much work the beat stands for. Reading them in
+    // order — short, long, hesitate, short — is what stops the sequence sounding
+    // like a metronome and starts it sounding like something is being worked out.
     {
       pre: `Loading ${subject} — ${recipe.trigger.shape}`,
       strong: '',
       post: '',
       isRecipeStep: false,
+      // Context Vedha already holds. It should land almost immediately, so the
+      // sequence opens with something rather than with a blank pause.
+      dwellMs: 420,
     },
     // 2 — the semantic layer: measures and the lateral lenses.
-    { pre: 'Finding measures & dimensions', strong: '', post: '', isRecipeStep: false },
+    {
+      pre: 'Finding measures & dimensions',
+      strong: '',
+      post: '',
+      isRecipeStep: false,
+      // The heaviest genuine lookup of the four — it reads the whole semantic layer.
+      dwellMs: 1020,
+    },
     // 3 — THE HERO. Naming the shape is the agentic moment; the aside tells a
     // state-shaped answer apart from a flow-shaped one in the operator's words.
     //
@@ -194,9 +208,20 @@ export function composeBuild(
       strong: shapeName,
       post: declaresAFlow(recipe) ? '' : ' (a state, not a flow)',
       isRecipeStep: true,
+      // The hero. Deliberately the longest: a judgement that resolves instantly
+      // doesn't read as a judgement. The pause is the point.
+      dwellMs: 1180,
     },
     // 4 — composing the beats.
-    { pre: 'Drafting the plan…', strong: '', post: '', isRecipeStep: false },
+    {
+      pre: 'Drafting the plan…',
+      strong: '',
+      post: '',
+      isRecipeStep: false,
+      // Its own trailing ellipsis already says "still going", and the plan fading
+      // in underneath is the resolution — so this one hands off quickly.
+      dwellMs: 560,
+    },
   ]
 
   return {

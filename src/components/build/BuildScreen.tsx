@@ -13,13 +13,17 @@ import { PlanBlock } from '../plan/PlanBlock'
 import { ResolutionLine } from './ResolutionLine'
 import { StepList } from './StepList'
 import { useBuildSequence } from './useBuildSequence'
+import type { BuildStep } from '../../compose/models'
+
+/** Module-level so the no-build render passes a stable reference, not a new []. */
+const EMPTY_STEPS: BuildStep[] = []
 
 export function BuildScreen() {
   const { state } = useApp()
   const { build, plan } = useComposition()
 
-  // Called unconditionally; a step count of 0 makes it inert.
-  useBuildSequence(build?.steps.length ?? 0)
+  // Called unconditionally; an empty step list makes it inert.
+  useBuildSequence(build?.steps ?? EMPTY_STEPS)
 
   if (!build || !plan) {
     return (

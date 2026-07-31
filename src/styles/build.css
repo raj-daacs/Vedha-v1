@@ -234,16 +234,59 @@
   font-weight: 600;
 }
 
-/* Not yet reached — present, so the operator can see what's coming, but drawn back. */
+/* Each line arrives rather than being already there. Short and small on purpose —
+   a big entrance would draw the eye to the animation instead of to the sentence.
+   Scoped to `--live` so unfolding a finished trace doesn't replay the whole run. */
+@keyframes vstep-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.steps__list--live .step {
+  animation: vstep-arrive 0.26s ease-out both;
+}
+
+/* Kept for a paused or queued run. StepList no longer renders lookahead — see the
+   note at the top of that file for why. */
 .step--pending {
   opacity: 0.45;
   color: var(--ink-faint);
 }
 
-/* Working. The pulse is the only thing moving on the screen. */
+/* Working. The pulse and the caret are the only things moving on the screen. */
 .step--active {
   opacity: 1;
   color: var(--ink);
+}
+
+/* The line is being written. A caret says that in a way no dot can — it is the
+   one mark a reader already associates with text arriving under a cursor. Sits on
+   the active step only, and leaves with it. */
+@keyframes vstep-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.step__caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.15em;
+  background: var(--accent-deep);
+  animation: vstep-caret 1s steps(1, end) infinite;
 }
 
 .step--active .step__dot {

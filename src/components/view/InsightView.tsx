@@ -15,13 +15,36 @@
 // and this says so plainly rather than faking a chart.
 // ---------------------------------------------------------------------------
 
+import { useMemo } from 'react'
 import { ROOT_SCOPE } from '../../compose/composeDeepen'
 import { useComposition } from '../../compose/useComposition'
+import type { ViewSection as ViewSectionModel } from '../../compose/viewModels'
 import { useApp } from '../../state/AppContext'
 import { SpineStrip } from '../plan/SpineStrip'
 import { DeepenPanel } from './DeepenPanel'
+import { SectionSkeleton } from './SectionSkeleton'
 import { ViewSection } from './ViewSection'
 import { useViewBuildSequence } from './useViewBuildSequence'
+
+/**
+ * Roughly how much this section is: what the assembly sequence spends time on.
+ *
+ * Relative units, not milliseconds — `viewDwellsMs` normalises against the view's own
+ * mean, so only the ratios between sections matter here. Counting rendered parts is
+ * the honest proxy: a split two-panel section with a headline and a legend genuinely
+ * is more for the agent to draw than a bare takeaway, and the operator can see that
+ * it was, which is what makes the uneven timing legible rather than random.
+ */
+function sectionWeight(section: ViewSectionModel): number {
+  const { beatView } = section
+  return (
+    1 +
+    beatView.panels.length * 0.4 +
+    (beatView.headline ? 0.25 : 0) +
+    (beatView.legend ? 0.2 : 0) +
+    (beatView.subtitle ? 0.1 : 0)
+  )
+}
 
 export function InsightView() {
   const { state, dispatch } = useApp()
@@ -37,10 +60,18 @@ export function InsightView() {
    */
   const revealOffset = (view?.spine.length ?? 0) > 0 ? 0 : 1
 
-  // Called unconditionally; a beat count of 0 (the plan-deep placeholder) makes it
-  // inert. The count comes straight from the compose layer, so every view assembles
+  // One weight per section the sequence will reveal, in walk order. When the spine
+  // takes the first beat there is no offset to drop; when it doesn't, the leading
+  // section is already up on first render and is not the sequence's to reveal.
+  const weights = useMemo(
+    () => (view?.sections ?? []).slice(revealOffset).map(sectionWeight),
+    [view?.sections, revealOffset],
+  )
+
+  // Called unconditionally; an empty weight list (the plan-deep placeholder) makes it
+  // inert. The weights come straight from the compose layer, so every view assembles
   // the same way.
-  useViewBuildSequence(Math.max((view?.sections.length ?? 0) - revealOffset, 0))
+  useViewBuildSequence(weights)
 
   if (!view) {
     return (
@@ -63,6 +94,19 @@ export function InsightView() {
   }
 
   const askingWholeView = state.deepenScope === ROOT_SCOPE
+  // Mid-assembly. False once every section is up, so a finished view carries no
+  // working indicator, and false at -1 so nothing shimmers before the pass starts.
+  const assembling = state.viewStep >= 0 && state.viewStep < weights.length
+
+  // How many sections have actually been written. `revealOffset` accounts for the
+  // spine having taken the first beat (or not having one to take).
+  const generatedCount = Math.max(
+    Math.min(state.viewStep + revealOffset, view.sections.length),
+    0,
+  )
+  // The one being written right now — undefined once the last section has landed, so
+  // a finished view carries no placeholder.
+  const generatingSection = assembling ? view.sections[generatedCount] : undefined
 
   return (
     <div className="view-wrap">
@@ -102,22 +146,47 @@ export function InsightView() {
             </div>
           )}
 
-          {view.sections.map((section, index) => (
+          {/* ONLY WHAT HAS BEEN WRITTEN, PLUS THE BLOCK BEING WRITTEN.
+              A section past the sequence's reach is absent from the document — not
+              present-and-transparent. That is the whole difference between generation
+              and a fade: the page has no idea how tall it will be, so it grows as the
+              agent works, and each block arriving changes the document. See the note
+              in SectionSkeleton.tsx. */}
+          {view.sections.slice(0, generatedCount).map((section) => (
             <ViewSection
               key={section.id}
               section={section}
-              // Walk order: a section is up once the sequence has reached its index.
-              revealed={index < state.viewStep + revealOffset}
               selected={state.deepenScope === section.id}
               onSelect={() => dispatch({ type: 'OPEN_DEEPEN', scope: section.id })}
             />
           ))}
+
+          {/* The block currently being written, at whatever height a placeholder is —
+              replaced by the real section, at its real height, when it lands. */}
+          {generatingSection && <SectionSkeleton section={generatingSection} />}
 
           <footer className="view__footer">
             Illustrative figures · composed from the recipe's beats
           </footer>
         </article>
       </div>
+
+      {/* Says which section is being worked on, and is the difference between a view
+          that fades in and a view something is visibly assembling.
+
+          NOT INSIDE THE SECTION IT DESCRIBES, AND IT CANNOT BE. A section that hasn't
+          landed sits at `opacity: 0` in flow — that is what keeps the document height
+          final from the first frame (see the assembly note in view.css). Anything
+          nested in it inherits that zero, so a per-section badge would be invisible,
+          and swapping the section's content for a skeleton would change its height and
+          break the very invariant the zero-opacity trick exists to protect. So the
+          indicator lives here, positioned out of flow, and names the section instead. */}
+      {assembling && (
+        <div className="view__composing" role="status" aria-live="polite">
+          <span className="view__composing-dot" />
+          composing {Math.min(state.viewStep + 1, weights.length)} of {weights.length}
+        </div>
+      )}
 
       <DeepenPanel />
     </div>

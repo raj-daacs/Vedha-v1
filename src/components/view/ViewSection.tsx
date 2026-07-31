@@ -21,13 +21,18 @@ import { Panel } from '../atoms/Panel'
 
 interface Props {
   section: ViewSectionModel
-  /** Has the assembly sequence reached this section yet? */
-  revealed: boolean
   selected: boolean
   onSelect: () => void
 }
 
-export function ViewSection({ section, revealed, selected, onSelect }: Props) {
+/**
+ * NO `revealed` PROP ANY MORE. It used to gate a pending/revealed pair of classes,
+ * because every section was rendered up front and faded in from opacity 0. Sections
+ * are now mounted only once the sequence has written them (see InsightView), so being
+ * here IS being revealed — a boolean for it could only ever be true, and the pending
+ * half of the pair described a state that no longer exists.
+ */
+export function ViewSection({ section, selected, onSelect }: Props) {
   const { beatView } = section
   const split = beatView.panels.length > 1
 
@@ -41,9 +46,9 @@ export function ViewSection({ section, revealed, selected, onSelect }: Props) {
   const classes = [
     'vsection',
     'vsection--selectable',
-    // `--revealed` is also what triggers the charts' entrance, so it has to be a real
-    // class rather than just the absence of `--pending`.
-    revealed ? 'vsection--revealed' : 'vsection--pending',
+    // Still a real class, not merely the absence of another: it's what drives the
+    // internal cascade and the chart entrances, which run on mount now.
+    'vsection--revealed',
     selected ? 'vsection--selected' : '',
     section.promoted ? 'vsection--promoted' : '',
   ]
@@ -54,10 +59,9 @@ export function ViewSection({ section, revealed, selected, onSelect }: Props) {
     <section
       className={classes}
       role="button"
-      // A section that hasn't arrived yet is neither clickable (pointer-events, in
-      // CSS) nor tabbable nor announced — an invisible card shouldn't be reachable.
-      tabIndex={revealed ? 0 : -1}
-      aria-hidden={revealed ? undefined : true}
+      // Unconditionally reachable: an unwritten section is no longer in the document
+      // at all, so there is no invisible-but-focusable case left to guard against.
+      tabIndex={0}
       aria-pressed={selected}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
