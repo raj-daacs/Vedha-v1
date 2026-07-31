@@ -140,7 +140,12 @@ export interface Chip {
   state: ChipState
 }
 
-/** A named group of chips — "metrics", "slice by", "state", "benchmark". */
+/**
+ * A named group of chips — "metrics", "dimensions", "state", "benchmark".
+ *
+ * Labels track the definitions file's own vocabulary wherever it has a word for the
+ * group, so the panel and the business team's JSON never diverge.
+ */
 export interface Facet {
   label: string
   chips: Chip[]

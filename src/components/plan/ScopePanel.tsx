@@ -8,7 +8,7 @@
 //
 //   spine   — rendered when there are nodes. A state shape has none.
 //   facets  — whatever groups the recipe's declaration produced. A flow yields
-//             metrics + slice by; a state yields state + benchmark. Same loop.
+//             metrics + dimensions; a state yields state + benchmark. Same loop.
 //   note    — rendered when there is one. Only a spineless shape has something
 //             to explain.
 //

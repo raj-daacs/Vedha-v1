@@ -154,7 +154,12 @@ function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[
       ),
     })
     facets.push({
-      label: 'slice by',
+      // "dimensions", NOT "slice by". The label has to be the business team's own word
+      // for the thing, and `dimensions` is the key they use in the definitions file —
+      // the same name this code already reads it under. "slice by" was a UI phrasing
+      // invented on this side of the boundary, which is exactly the drift the
+      // definitions file exists to prevent.
+      label: 'dimensions',
       chips: [
         ...semantics.dimensions.map(
           (dimension): Chip => ({
