@@ -599,6 +599,40 @@ for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
 
 console.log('\n=== I · cross-panel coherence ===\n')
 
+// THE WORKING SURFACE LEADS. A funnel and a bridge are the flow itself — the thing the
+// operator works on — so where a view draws one it has to be the FIRST block. A
+// calendar-trend is a measure ON that flow, and leading with it inverts the reading:
+// it puts a number about the shape ahead of the shape.
+//
+// Both funnel views and all three bridge views got this wrong at first, in the same
+// way, which is why it is a check and not a habit.
+const SURFACE_ATOMS = ['funnel', 'bridge'] as const
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const [, recipeId] = key.split(':')
+  const recipe = RECIPES_BY_ID[recipeId as RecipeId]
+  if (!recipe) continue
+
+  // Beat order as the view renders it: the recipe's order, fixture-covered only.
+  const rendered = recipe.beats.filter((beat) => fixture.beats[beat.id] !== undefined)
+  const atomsOf = (beatId: string) => fixture.beats[beatId].panels.map((p) => p.atom)
+  const surfaceBeat = rendered.find((b) =>
+    atomsOf(b.id).some((a) => (SURFACE_ATOMS as readonly string[]).includes(a)),
+  )
+  if (!surfaceBeat || rendered.length === 0) continue
+
+  const leadAtoms = atomsOf(rendered[0].id)
+  const label = `${key} — leads with ${rendered[0].id} [${leadAtoms.join(', ')}]`
+  if (surfaceBeat.id === rendered[0].id) pass(label)
+  else {
+    fail(label)
+    console.log(
+      `        the working surface is on ${surfaceBeat.id}, not the lead. A trend is a\n` +
+        '        measure ON the flow; leading with it puts the measure before the shape.',
+    )
+  }
+}
+console.log()
+
 for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
   const panels = Object.values(fixture.beats).flatMap((beat) => beat.panels)
 

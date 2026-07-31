@@ -60,7 +60,7 @@ export function composeView(
   const fixture = VIEW_FIXTURES[fixtureKey(context.workflow, recipe.id)]
   if (!fixture) return null
 
-  const bindings = bindingsFor(semanticsFor(context.workflow), context.period)
+  const bindings = bindingsFor(semanticsFor(context.workflow), context.period, recipe.spine)
   const vsBenchmark = judgedAgainstBenchmark(recipe)
 
   // Beat order comes from the recipe; a beat with no fixture simply isn't rendered.

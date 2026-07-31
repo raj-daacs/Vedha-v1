@@ -128,7 +128,7 @@ export function judgedAgainstBenchmark(recipe: Recipe): boolean {
  */
 function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[]): Facet[] {
   const semantics = semanticsFor(context.workflow)
-  const bindings = bindingsFor(semantics, context.period)
+  const bindings = bindingsFor(semantics, context.period, recipe.spine)
 
   // What the plan reads, flattened, with templates resolved so "{goal_metric}"
   // can be recognised as "Activation Rate".
@@ -202,19 +202,27 @@ function deriveFacets(recipe: Recipe, context: ComposeContext, spine: SpineNode[
  *
  * Keyed on the declared fit, not on the family, so it generalises.
  */
-function showsOptionalBeats(recipe: Recipe): boolean {
-  // `hold` is the only fit that DROPS its optionals. The funnel's four questions each
-  // hold their own beat, so its optional projection is genuinely not part of the plan
-  // until something asks for it.
-  //
-  // `collapse` and `bend` both keep theirs, drawn back. For the scorecard the reason
-  // is that the thinning IS the finding. For a bending shape the reason is different:
-  // `movement_bridge` declares its dimensional why and its projection as optional
-  // because they only apply where a slicing dimension or a run-rate is meaningful —
-  // which varies by WORKFLOW, not by whether the shape wants them. Dropping them from
-  // the plan outright would hide beats the recipe considers part of itself, and the
-  // fixture is what decides whether any given workflow actually builds them.
-  return recipe.four_question_fit !== 'hold'
+/**
+ * NO FIT DROPS ITS OPTIONAL BEATS ANY MORE — `optional` controls PROMINENCE only.
+ *
+ * This gate has narrowed twice and has now closed entirely, which is worth recording
+ * because the field's meaning shifted under it. It began as `fit === 'collapse'`: the
+ * scorecard shows its optionals drawn back because the thinning IS the finding, while
+ * the funnel's optional beat was a speculative projection the plan shouldn't promise.
+ * Then `bend` joined, because `movement_bridge` declares a dimensional why that applies
+ * per-WORKFLOW rather than per-shape. Now `hold` joins too, because the funnel's
+ * optional beat is no longer a projection — it is the demoted calendar-trend, a real
+ * read that simply isn't the lead.
+ *
+ * Across all five recipes there is no longer one optional beat that should be hidden
+ * outright. What decides whether a beat reaches a VIEW is the fixture, which is the
+ * honest gate and always was.
+ *
+ * Kept as a named function rather than inlined so that if a recipe ever does declare a
+ * beat worth hiding, there is one obvious place for the rule to come back.
+ */
+function showsOptionalBeats(_recipe: Recipe): boolean {
+  return true
 }
 
 /**
@@ -242,8 +250,8 @@ const CONFIDENCE_LABELS = {
 } as const
 
 /** What the recipe declared this beat reads, with templates resolved. */
-function declaredReads(beat: Beat, context: ComposeContext): string[] {
-  const bindings = bindingsFor(semanticsFor(context.workflow), context.period)
+function declaredReads(beat: Beat, context: ComposeContext, spine?: SpineDecl): string[] {
+  const bindings = bindingsFor(semanticsFor(context.workflow), context.period, spine)
   return beat.reads.map((read) => resolveTemplate(read, bindings))
 }
 
@@ -254,10 +262,10 @@ function declaredReads(beat: Beat, context: ComposeContext): string[] {
  * then the rest of the workflow's measures and lenses, so the operator can widen
  * the scope rather than only narrow it.
  */
-function candidateReads(beat: Beat, context: ComposeContext): string[] {
+function candidateReads(beat: Beat, context: ComposeContext, spine?: SpineDecl): string[] {
   const semantics = semanticsFor(context.workflow)
   const offered = [...semantics.metrics, ...semantics.dimensions]
-  return Array.from(new Set([...declaredReads(beat, context), ...offered]))
+  return Array.from(new Set([...declaredReads(beat, context, spine), ...offered]))
 }
 
 export interface PlanEditOptions {
@@ -271,16 +279,18 @@ function composeBeat(
   beat: Beat,
   context: ComposeContext,
   options: PlanEditOptions,
+  /** The recipe's spine, so a question naming its ends resolves. */
+  spine?: SpineDecl,
 ): BeatModel {
   const semantics = semanticsFor(context.workflow)
-  const bindings = bindingsFor(semantics, context.period)
+  const bindings = bindingsFor(semantics, context.period, spine)
 
   // An optional beat in a collapsing plan is present but drawn back. `optional` is
   // itself optional in the schema now, so absent reads as "always in the plan".
   const thin = beat.optional ?? false
   const confidence = CONFIDENCE_LABELS[beat.confidence]
 
-  const declared = declaredReads(beat, context)
+  const declared = declaredReads(beat, context, spine)
   const effective = options.beatReads?.[beat.id] ?? declared
   const overridden =
     effective.length !== declared.length || effective.some((read) => !declared.includes(read))
@@ -292,7 +302,7 @@ function composeBeat(
   const editing =
     options.editBeat === beat.id
       ? {
-          reads: candidateReads(beat, context).map((label) => ({
+          reads: candidateReads(beat, context, spine).map((label) => ({
             label,
             inScope: effective.includes(label),
           })),
@@ -331,7 +341,7 @@ export function composePlan(
   const spine = deriveSpine(recipe.spine)
   const hasSpine = spine.length > 0
 
-  const beats = beatsInPlan(recipe).map((beat) => composeBeat(beat, context, options))
+  const beats = beatsInPlan(recipe).map((beat) => composeBeat(beat, context, options, recipe.spine))
 
   return {
     // "Funnel · Flow family". Capitalising the declared family name avoids a

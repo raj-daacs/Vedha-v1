@@ -21,13 +21,13 @@ export const RECIPES: RecipeBook = [
       intent_signals: ['funnel', 'conversion', 'losing people', 'where we lose', 'drop-off', 'activate', 'onboarding', 'top of funnel'],
     },
     beats: [
-      { id: 'fc_stand', category: 'stand', question: 'Where the rate stands vs target', reads: ['goal rate', 'target'], builds: 'trend + headline vs target', atoms: ['Trend'], confidence: 'from_data' },
-      { id: 'fc_why_step', category: 'why', question: 'Which step leaks most?', reads: ['funnel steps'], builds: 'full funnel, worst step marked', atoms: ['Funnel'], confidence: 'from_data' },
-      { id: 'fc_why_seg', category: 'why', question: 'Which segment is worst at that step?', reads: ['leak step', 'segment'], builds: 'ranked segment bars', atoms: ['RankedBars'], fills_from: ['RS3', 'RS5'], confidence: 'from_data' },
-      { id: 'fc_ahead', category: 'ahead', question: 'Projected rate if the leak is fixed', reads: ['leak step', 'elasticity'], builds: 'projection', atoms: ['Trend'], confidence: 'directional', optional: true },
+      // The FUNNEL is the operator's working surface (the spine). It leads and FUSES "where we stand" (the overall rate, as headline) with the top-level "why" (which step leaks, marked on the funnel) into one artifact. The calendar-trend is a measure ON the flow, not the flow — demoted to a secondary, optional beat. Never lead with the trend.
+      { id: 'fc_funnel', category: 'stand', question: 'How {entrants} convert to {converted}, and where it leaks', reads: ['funnel steps', 'goal rate', 'target'], builds: 'full funnel with worst step marked; rate vs target as the headline', atoms: ['Funnel'], confidence: 'from_data' },
+      { id: 'fc_why_seg', category: 'why', question: 'Which segment is worst at the leak step?', reads: ['leak step', 'segment'], builds: 'ranked segment bars', atoms: ['RankedBars'], fills_from: ['RS3', 'RS5'], confidence: 'from_data' },
+      { id: 'fc_trend', category: 'ahead', question: 'Is the rate improving or drifting?', reads: ['goal rate over time', 'target'], builds: 'rate trend vs target — a measure on the flow, secondary', atoms: ['Trend'], confidence: 'from_data', optional: true },
     ],
     four_question_fit: 'hold',
-    narration_note: 'All four questions hold their own beat, in order.',
+    narration_note: 'The funnel is the spine and the working surface: it LEADS and fuses "where we stand" (overall rate headline) with the top-level "why" (which step leaks, marked). The dimensional why (segment at the leak) is the additional read; the calendar-trend is a measure on the flow, demoted to a secondary/optional beat. Never lead with the trend.',
     producibility: 'yes',
     requires: [],
   },

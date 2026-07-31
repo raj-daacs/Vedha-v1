@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { WorkflowSemantics } from '../data/semanticModel'
-import type { Period } from '../data/recipe_schema'
+import type { Period, SpineDecl } from '../data/recipe_schema'
 
 export interface Bindings {
   goal_metric: string
@@ -29,9 +29,26 @@ export interface Bindings {
    * that list is written most-useful-first.
    */
   dimension: string
+  /**
+   * THE TWO ENDS OF THE SPINE, in the shape's own words: "How {entrants} convert to
+   * {converted}". Read off `SpineDecl`, so they say whatever the recipe declared
+   * rather than anything hardcoded — and they fall back to the response family's
+   * triplet, the same both-triplets rule `deriveSpine` follows.
+   *
+   * These come from the RECIPE, not the workflow, so they are deliberately generic:
+   * the funnel's ends are "entrants" and "converted" in every workflow it serves. A
+   * fixture's subtitle is where the specific words belong ("Visitors → Won").
+   */
+  entrants: string
+  converted: string
 }
 
-export function bindingsFor(semantics: WorkflowSemantics, period: Period): Bindings {
+export function bindingsFor(
+  semantics: WorkflowSemantics,
+  period: Period,
+  /** The recipe's spine, for the `{entrants}` / `{converted}` ends. */
+  spine?: SpineDecl,
+): Bindings {
   return {
     goal_metric: semantics.goalMetric,
     period,
@@ -40,6 +57,10 @@ export function bindingsFor(semantics: WorkflowSemantics, period: Period): Bindi
     // Falls back to the literal word rather than to empty: "Which dimension drove…"
     // is clumsy but readable, whereas "Which  drove…" looks broken.
     dimension: semantics.dimensions[0] ?? 'dimension',
+    // Both triplets, same rule as deriveSpine — a response shape's ends are its lever
+    // and its constraint. Literal words on the fallback, for the same reason as above.
+    entrants: spineLabel(spine?.input ?? spine?.lever ?? 'entrants'),
+    converted: spineLabel(spine?.output ?? spine?.constraint ?? 'converted'),
   }
 }
 

@@ -127,16 +127,41 @@ const ACTIVATION_FUNNEL: ViewFixture = {
   subtitle: "where we're losing people",
   meta: `Activation workflow · funnel + cohort · last ${WEEKLY_ACTIVATION.length} weeks`,
   beats: {
-    fc_stand: {
-      subtitle: `Activated ÷ New, per weekly cohort · vs the ${ACTIVATION_TARGET}% target`,
+    // THE FUNNEL LEADS. Same artifact that used to sit in the why-step beat, now the
+    // first block — it is the operator's working surface, and it fuses "where we
+    // stand" (the rate, as the headline) with the top-level "why" (the marked leak)
+    // into one thing to look at. The numbers are unchanged; only the order is.
+    fc_funnel: {
+      subtitle: 'Share of new users reaching each step · New → value moment',
       headline: {
         value: `${activationAverage}%`,
         delta: {
           text: `▼ ${activationGap} pts below the ${ACTIVATION_TARGET}% target`,
           tone: 'bad',
         },
-        note: 'quarter average · flat all quarter',
+        note: 'activated ÷ new · quarter average',
       },
+      panels: [{ atom: 'funnel', data: { steps: ONBOARDING_STEPS, finalNote: 'activated' } }],
+      takeaway: `${activationAverage}% of new users reach the value moment, ${activationGap} points under the ${ACTIVATION_TARGET}% target — and the single biggest drop is at Connect data, where only ${connectDataPass}% of users who finish Setup get through, versus 88–92% at every other step. Roughly ${lostAtConnectData} of every 100 signups are lost right there. Fix that one step and the whole funnel lifts.`,
+    },
+
+    fc_why_seg: {
+      subtitle: `Connect-data completion by ICP / segment · vs the ${segmentAverage}% average`,
+      panels: [
+        {
+          atom: 'rankedBars',
+          data: { bars: CONNECT_DATA_BY_SEGMENT, averageLabel: 'avg', unit: '%' },
+        },
+      ],
+      takeaway: `The leak is concentrated in ${worstSegment.label} self-serve — ${worstSegment.value}% clear Connect data, versus ${bestSegment.value}% for ${bestSegment.label} (who get CS-guided onboarding). ${worstSegment.label} sits ${segmentAverage - worstSegment.value} points below average and is what pulls the whole activation rate down. The fix and the segment point to the same place: guided setup at Connect data for ${worstSegment.label}.`,
+    },
+
+    // THE TREND TRAILS, drawn back. It is a measure ON the flow rather than the flow,
+    // so it answers "is this getting better" once the funnel has already said what the
+    // shape is. The maturation matrix rides here too: both are reads over TIME, which
+    // is what makes them the pair that follows rather than leads.
+    fc_trend: {
+      subtitle: `Activated ÷ New per weekly cohort · vs the ${ACTIVATION_TARGET}% target`,
       panels: [
         {
           atom: 'trend',
@@ -154,24 +179,7 @@ const ACTIVATION_FUNNEL: ViewFixture = {
           data: maturationMatrix,
         },
       ],
-      takeaway: `Mature cohorts settle at ${matureRange.low}–${matureRange.high}%, short of the ${ACTIVATION_TARGET}% goal, and the rate is flat across the quarter — no drift up or down. The newest cohorts (the unfilled cells running down to the lower right) are still climbing.`,
-    },
-
-    fc_why_step: {
-      subtitle: 'Share of new users reaching each step · New → value moment',
-      panels: [{ atom: 'funnel', data: { steps: ONBOARDING_STEPS, finalNote: 'activated' } }],
-      takeaway: `The single biggest drop is at Connect data — only ${connectDataPass}% of users who finish Setup get through it, versus 88–92% at every other step. Roughly ${lostAtConnectData} of every 100 signups are lost right here. Fix this one step and the whole funnel lifts.`,
-    },
-
-    fc_why_seg: {
-      subtitle: `Connect-data completion by ICP / segment · vs the ${segmentAverage}% average`,
-      panels: [
-        {
-          atom: 'rankedBars',
-          data: { bars: CONNECT_DATA_BY_SEGMENT, averageLabel: 'avg', unit: '%' },
-        },
-      ],
-      takeaway: `The leak is concentrated in ${worstSegment.label} self-serve — ${worstSegment.value}% clear Connect data, versus ${bestSegment.value}% for ${bestSegment.label} (who get CS-guided onboarding). ${worstSegment.label} sits ${segmentAverage - worstSegment.value} points below average and is what pulls the whole activation rate down. The fix and the segment point to the same place: guided setup at Connect data for ${worstSegment.label}.`,
+      takeaway: `Neither improving nor drifting: mature cohorts settle at ${matureRange.low}–${matureRange.high}% across the whole quarter, with no seasonal dip. A gap that holds this steady for ${WEEKLY_ACTIVATION.length} weeks is structural — it will not close on its own, which is why the leak above is the thing to act on rather than waiting.`,
     },
   },
 
@@ -184,9 +192,9 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         'A scoped question re-runs the same reasoning from that section’s standpoint, which is usually a sharper answer than asking across everything.',
       ],
     },
-    fc_stand: {
-      scopeLabel: 'deepen · where we stand',
-      title: 'Activation rate — deeper',
+    fc_trend: {
+      scopeLabel: 'deepen · the trend',
+      title: 'Is the rate moving — deeper',
       body: [
         `The newest cohorts are still maturing, so the settled rate is closer to ${activationAverage}–${activationAverage + 1}% than to the raw quarter average.`,
         'The flatness matters: there is no seasonal dip and no drift. A gap that holds steady across thirteen weeks is structural, which means it will not close on its own.',
@@ -196,11 +204,11 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         takeaway: `Flat across all ${WEEKLY_ACTIVATION.length} weeks with no seasonal shape — the ${activationGap}-point gap to ${ACTIVATION_TARGET}% is structural, so it needs a fix rather than patience.`,
       },
     },
-    fc_why_step: {
-      scopeLabel: 'deepen · connect data',
-      title: 'Connect data — deeper',
+    fc_funnel: {
+      scopeLabel: 'deepen · the funnel',
+      title: 'The funnel and its leak — deeper',
       body: [
-        `Only ${connectDataPass}% of users who finish Setup clear this step.`,
+        `${activationAverage}% reach the value moment, and only ${connectDataPass}% of users who finish Setup clear Connect data.`,
         'Split by onboarding path rather than by segment: CS-guided runs 71%, self-serve 48%. The path someone is on predicts this step better than who they are.',
       ],
       promotedSection: {
@@ -1275,35 +1283,22 @@ const ACQUISITION_FUNNEL: ViewFixture = {
   subtitle: 'where the top of the funnel is losing deals',
   meta: `Acquisition workflow · funnel · last ${LEAD_CONV_WEEKS.length} weeks`,
   beats: {
-    fc_stand: {
-      subtitle: `Won ÷ Leads, per week · vs the ${LEAD_CONV_TARGET}% target`,
+    // THE FUNNEL LEADS — the same stages that used to sit in the why-step beat, now
+    // first, carrying the rate-vs-target headline. Identical numbers; only the order
+    // changed. The rate and the shape were always the same fact stated twice, and this
+    // is what saying it once looks like.
+    fc_funnel: {
+      subtitle: 'Share of visitors reaching each stage · Visitors → Won',
       headline: {
         value: `${leadConvAverage}%`,
         delta: {
           text: `▼ ${leadConvGap} pts below the ${LEAD_CONV_TARGET}% target`,
           tone: 'bad',
         },
-        note: 'quarter average · flat all quarter',
+        note: 'won ÷ leads · quarter average',
       },
-      panels: [
-        {
-          atom: 'trend',
-          label: 'Lead conversion rate, weekly',
-          data: {
-            points: series(LEAD_CONV_WEEKS, (i) => `wk ${i + 1}`),
-            yTicks: [16, 13, 10, 7],
-            target: { value: LEAD_CONV_TARGET, label: `target ${LEAD_CONV_TARGET}%` },
-            unit: '%',
-          },
-        },
-      ],
-      takeaway: `Lead conversion sits at ${leadConvAverage}% against a ${LEAD_CONV_TARGET}% target, and it is flat across the quarter. Won ÷ Leads off the funnel below is ${wonPerLead}%, the same number from the other direction — so this is a conversion problem rather than a measurement one.`,
-    },
-
-    fc_why_step: {
-      subtitle: 'Share of visitors reaching each stage · Visitors → Won',
       panels: [{ atom: 'funnel', data: { steps: TOF_STAGES, finalNote: 'won' } }],
-      takeaway: `The worst gate is ${tofWorstGate} at ${tofWorstPass}% — every earlier stage passes ${Math.min(...tofPasses.slice(1, tofWorstIndex).filter((p): p is number => p !== undefined))}% or better. Volume is not the problem: ${TOF_STAGES[3].reach} of every 100 visitors reach SQL, and only ${TOF_STAGES[4].reach} close.`,
+      takeaway: `Lead conversion is ${leadConvAverage}% against a ${LEAD_CONV_TARGET}% target, and the funnel says why: the worst gate is ${tofWorstGate} at ${tofWorstPass}%, where every earlier stage passes ${Math.min(...tofPasses.slice(1, tofWorstIndex).filter((p): p is number => p !== undefined))}% or better. Volume is not the problem — ${TOF_STAGES[3].reach} of every 100 visitors reach SQL and only ${TOF_STAGES[4].reach} close. Won ÷ Leads off the stages is ${wonPerLead}%, the same number from the other direction.`,
     },
 
     fc_why_seg: {
@@ -1316,6 +1311,25 @@ const ACQUISITION_FUNNEL: ViewFixture = {
       ],
       takeaway: `${worstChannel.label} closes at ${worstChannel.value}% against ${bestChannel.label}'s ${bestChannel.value}% — ${bestChannel.value - worstChannel.value} points apart at the same gate. The channel bringing the most volume is the one least able to close it, which is a targeting problem upstream rather than a sales problem at the gate.`,
     },
+
+    // THE TREND TRAILS, drawn back. A measure on the flow, answering "is this getting
+    // better" after the funnel has said what the shape is — not the lead.
+    fc_trend: {
+      subtitle: `Won ÷ Leads per week · vs the ${LEAD_CONV_TARGET}% target`,
+      panels: [
+        {
+          atom: 'trend',
+          label: 'Lead conversion rate, weekly',
+          data: {
+            points: series(LEAD_CONV_WEEKS, (i) => `wk ${i + 1}`),
+            yTicks: [16, 13, 10, 7],
+            target: { value: LEAD_CONV_TARGET, label: `target ${LEAD_CONV_TARGET}%` },
+            unit: '%',
+          },
+        },
+      ],
+      takeaway: `Neither improving nor drifting — ${leadConvAverage}% for ${LEAD_CONV_WEEKS.length} straight weeks. A rate that moved would point at something that changed; one this flat says the constraint is structural, which is the ${tofWorstGate} gate above rather than anything about this quarter.`,
+    },
   },
 
   deepen: {
@@ -1327,9 +1341,9 @@ const ACQUISITION_FUNNEL: ViewFixture = {
         'Top-of-funnel questions are usually about one gate, or about which channel behaves differently at it.',
       ],
     },
-    fc_stand: {
-      scopeLabel: 'deepen · the rate',
-      title: 'Lead conversion — deeper',
+    fc_trend: {
+      scopeLabel: 'deepen · the trend',
+      title: 'Is the rate moving — deeper',
       body: [
         `${leadConvAverage}% against a ${LEAD_CONV_TARGET}% target, flat for ${LEAD_CONV_WEEKS.length} weeks.`,
         `Flat matters as much as low: a rate that moved would point at something that changed. This one has sat still all quarter, which says the constraint is structural — the ${tofWorstGate} gate below.`,
@@ -1339,11 +1353,11 @@ const ACQUISITION_FUNNEL: ViewFixture = {
         takeaway: `Both, and the flatness is the more useful fact. ${leadConvAverage}% for ${LEAD_CONV_WEEKS.length} straight weeks against a ${LEAD_CONV_TARGET}% target means nothing being tried is moving it.`,
       },
     },
-    fc_why_step: {
-      scopeLabel: 'deepen · the gate',
-      title: `${tofWorstGate} — deeper`,
+    fc_funnel: {
+      scopeLabel: 'deepen · the funnel',
+      title: `The funnel and its leak — deeper`,
       body: [
-        `${tofWorstPass}% of SQLs close, against ${tofPasses[2]}% and ${tofPasses[3]}% at the two gates before it.`,
+        `${leadConvAverage}% lead conversion, and ${tofWorstPass}% of SQLs close against ${tofPasses[2]}% and ${tofPasses[3]}% at the two gates before it.`,
         'The funnel is well-behaved until the last step. That points away from lead quality in aggregate and toward what happens once a deal is qualified — which the channel split tests directly.',
       ],
       promotedSection: {
