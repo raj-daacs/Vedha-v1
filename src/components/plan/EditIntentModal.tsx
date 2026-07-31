@@ -7,9 +7,9 @@
 // front door uses, so the narrated build replays and the recognition step names
 // whatever it resolved to.
 //
-// Renders an EditAModel. The eligible-shape list is whatever the workspace can
+// Renders an EditAModel. The eligible-shape list is whatever the workflow can
 // produce — this editor can choose *between* those shapes, never outside them, so
-// the workspace stays authoritative even here.
+// the workflow stays authoritative even here.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useRef, useState } from 'react'
@@ -18,7 +18,7 @@ import { composeEditA } from '../../compose/composeEdit'
 import type { ComposeContext } from '../../compose/models'
 import { useApp } from '../../state/AppContext'
 import { useReplan } from '../../state/useReplan'
-import type { Level, Period, Workspace } from '../../data/workspaces'
+import type { Altitude, Period, RecipeId, WorkflowName } from '../../data/recipe_schema'
 
 export function EditIntentModal() {
   const { state, dispatch } = useApp()
@@ -29,7 +29,7 @@ export function EditIntentModal() {
    * An explicitly picked shape. Component-local because it's transient — it only
    * means anything at the moment Re-plan is pressed. Null = let the text decide.
    */
-  const [override, setOverride] = useState<string | null>(null)
+  const [override, setOverride] = useState<RecipeId | null>(null)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -37,8 +37,8 @@ export function EditIntentModal() {
 
   const context: ComposeContext = {
     intent: state.draftIntent,
-    workspace: state.workspace,
-    level: state.level,
+    workflow: state.workflow,
+    altitude: state.altitude,
     output: state.output,
     period: state.period,
   }
@@ -78,14 +78,14 @@ export function EditIntentModal() {
         <div className="modal__label">Context</div>
         <div className="modal__rows">
           <ContextRow
-            label="Workspace"
-            options={model.workspaces}
-            current={model.workspace}
+            label="Workflow"
+            options={model.workflows}
+            current={model.workflow}
             onPick={(value) => {
-              // Changing workspace changes which shapes are eligible, so an override
-              // picked under the old workspace must not survive.
+              // Changing workflow changes which shapes are eligible, so an override
+              // picked under the old workflow must not survive.
               setOverride(null)
-              dispatch({ type: 'SET_WORKSPACE', workspace: value as Workspace })
+              dispatch({ type: 'SET_WORKFLOW', workflow: value as WorkflowName })
             }}
           />
           <ContextRow
@@ -96,10 +96,10 @@ export function EditIntentModal() {
             onPick={(value) => dispatch({ type: 'SET_PERIOD', period: value as Period })}
           />
           <ContextRow
-            label="Level"
-            options={model.levels}
-            current={model.level}
-            onPick={(value) => dispatch({ type: 'SET_LEVEL', level: value as Level })}
+            label="Altitude"
+            options={model.altitudes}
+            current={model.altitude}
+            onPick={(value) => dispatch({ type: 'SET_ALTITUDE', altitude: value as Altitude })}
           />
         </div>
 
@@ -127,16 +127,14 @@ export function EditIntentModal() {
             )
           })}
           {model.recipes.length === 0 && (
-            <div className="modal__empty">No shapes are available in this workspace.</div>
+            <div className="modal__empty">No shapes are available in this workflow.</div>
           )}
         </div>
 
-        {!model.resolvedId && !override && (
-          <p className="modal__warning">
-            This wording doesn’t name a shape {model.workspace} produces. Pick one above,
-            or reword the ask.
-          </p>
-        )}
+        {/* No "names nothing" warning any more: the resolver always lands on a shape
+            this workflow produces, so there is nothing to warn about. Where it fell
+            back to the workflow's primary lens, the Build step says so — and says it
+            where the operator can act on it. */}
 
         <div className="modal__actions">
           <button

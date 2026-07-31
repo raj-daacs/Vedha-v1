@@ -12,7 +12,15 @@
 // layer, so there is exactly one source of truth and no cache to invalidate.
 // ---------------------------------------------------------------------------
 
-import type { Level, Output, Period, Workspace } from '../data/workspaces'
+import type {
+  Altitude,
+  Output,
+  Period,
+  RecipeId,
+  ResolvedQuery,
+  Source,
+  WorkflowName,
+} from '../data/recipe_schema'
 
 /** The three stages of the core loop. */
 export type Screen = 'entry' | 'thread' | 'view'
@@ -20,26 +28,73 @@ export type Screen = 'entry' | 'thread' | 'view'
 /** Which rail destination is selected. 'you' is presentational, so not included. */
 export type RailKey = 'new' | 'views' | 'search' | 'settings'
 
+/**
+ * The scope dimensions that have their own picker.
+ *
+ * `altitude` and `workflow` are the scope proper — they decide which recipes are
+ * even reachable. `output` and `period` are the two axes the resolver can also read
+ * out of the text, which is exactly why they need pickers: without a way to set them
+ * deliberately, the "explicit pick" tier of the precedence rules is unreachable.
+ */
+export type PickerKey = 'altitude' | 'workflow' | 'output' | 'period'
+
 export interface AppState {
   screen: Screen
   rail: RailKey
 
   /** The context the operator has set — what the Entry chips and context bar render. */
-  workspace: Workspace
-  level: Level
+  workflow: WorkflowName
+  altitude: Altitude
   output: Output
   period: Period
+
+  /**
+   * Did the operator CHOOSE this output / period, or is it just what the scope
+   * pre-selected?
+   *
+   * Load-bearing, not bookkeeping. The resolver's precedence rules are "explicit
+   * pick beats a text cue" (output) and "text beats the pick" (period) — and a value
+   * that merely equals the scope default is indistinguishable from a deliberate one
+   * without this. It is also what lets the Build step say "you chose Review" rather
+   * than "I assumed Review".
+   *
+   * Both reset when the scope changes, because a default carried over from another
+   * workflow was never a choice about this one.
+   */
+  outputTouched: boolean
+  periodTouched: boolean
 
   /** Live value of the ask field. */
   draftIntent: string
   /** What was actually asked. Empty until SUBMIT_INTENT. */
   submittedIntent: string
 
-  /** The in-panel Workspace/Level/Output/Period picker. */
-  pickerOpen: boolean
+  /**
+   * WHICH scope picker is open, or null for none.
+   *
+   * Was a boolean, when one panel held every dimension and all three chips opened
+   * it. Each chip now opens only its own dimension, so the state has to name one —
+   * and only one can be open, since they share the space under the chip row.
+   */
+  pickerOpen: PickerKey | null
 
-  /** The recipe `selectRecipe` chose for the submitted ask. Null before any ask. */
-  recipeId: string | null
+  /** The recipe the submitted ask resolved to. Null before any ask. */
+  recipeId: RecipeId | null
+
+  /**
+   * HOW the submitted ask resolved — provenance per field, plus any flags worth
+   * saying out loud. Null before any ask.
+   *
+   * Stored rather than recomposed because it is a fact about a past event: the
+   * operator's picks at the moment they asked. Recomputing it later from current
+   * state would silently relabel "you chose this" as "I assumed this" the instant
+   * they touched a chip.
+   */
+  resolution: {
+    sources: { recipe: Source; output: Source; period: Source }
+    flags: string[]
+    focus?: { dimension?: string; member?: string; note?: string }
+  } | null
 
   /**
    * How far the narrated build has resolved: -1 idle, 0..n-1 the active step,
@@ -49,12 +104,10 @@ export interface AppState {
   buildStep: number
   planRevealed: boolean
 
-  /**
-   * Set when an ask matched no recipe. A real product state, not an error:
-   * Vedha says it can't recognise the shape rather than composing a plan it has
-   * no reason to believe in.
-   */
-  unrecognised: string | null
+  // NOTE: `unrecognised` is gone. Under the resolver there is no such state — the
+  // operator always has a scope, so a vague or even off-domain ask still resolves to
+  // a defensible query. What used to be a dead end on Entry is now the
+  // `off_domain_text` flag, stated plainly at the Build step and correctable there.
 
   /**
    * What the deepen panel is scoped to: a section's beat id, `'root'` for the whole
@@ -84,7 +137,7 @@ export interface AppState {
 
   /**
    * EDIT A — the intent/scope modal is open. Coarse edits (revise the ask, change
-   * workspace or period) that may re-select the recipe and re-compose everything.
+   * workflow or period) that may re-resolve the recipe and re-compose everything.
    */
   editA: boolean
 
@@ -109,23 +162,28 @@ export type Action =
   | { type: 'NEW' }
   /** Every keystroke in the ask field. */
   | { type: 'SET_DRAFT'; value: string }
-  | { type: 'TOGGLE_PICKER' }
-  | { type: 'SET_WORKSPACE'; workspace: Workspace }
-  | { type: 'SET_LEVEL'; level: Level }
+  /** Open one dimension's picker, or close it if it's already the open one. */
+  | { type: 'TOGGLE_PICKER'; picker: PickerKey }
+  | { type: 'CLOSE_PICKER' }
+  | { type: 'SET_WORKFLOW'; workflow: WorkflowName }
+  | { type: 'SET_ALTITUDE'; altitude: Altitude }
   | { type: 'SET_OUTPUT'; output: Output }
   | { type: 'SET_PERIOD'; period: Period }
   /**
-   * Send / Enter / an example card. Carries the intent explicitly so an example
-   * card can submit its own text without a round-trip through draftIntent, and
-   * the resolved recipe so the reducer stays pure (selection happens at the edge).
+   * Send / Enter / a prompt chip. Carries the intent explicitly so a chip can submit
+   * its own text without a round-trip through draftIntent, and the whole
+   * ResolvedQuery so the reducer stays pure — resolution happens at the edge.
+   *
+   * The resolved output and period are applied to state, because after a submit
+   * those ARE the operator's context: if the text said "this month", the chips
+   * should agree with the answer they're about to see.
    */
   | {
       type: 'SUBMIT_INTENT'
       intent: string
-      recipeId: string | null
-      /** An example card states its own context rather than borrowing the current one. */
-      workspace?: Workspace
-      period?: Period
+      resolved: ResolvedQuery
+      /** A prompt chip states its own workflow rather than borrowing the current one. */
+      workflow?: WorkflowName
     }
   /** One tick of the narrated build. */
   | { type: 'BUILD_ADVANCE'; stepCount: number }

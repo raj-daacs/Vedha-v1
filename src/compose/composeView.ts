@@ -10,19 +10,19 @@
 // The family bend, again as data rather than branches:
 //
 //   spine strip present  ← deriveSpine(recipe.spine) is non-empty
-//   "… vs benchmark"     ← recipe.spine.benchmark is declared
+//   "… vs benchmark"     ← the recipe's goal_metric_kind names one
 //   which sections exist ← a fixture entry exists for that beat
 //   confidence stamp     ← computed from the rendered beats' own confidence
 //
-// Returns null when no fixture covers this (workspace, recipe) pair, which is how a
+// Returns null when no fixture covers this (workflow, recipe) pair, which is how a
 // plan-deep recipe gets its placeholder without a list of built views anywhere.
 // ---------------------------------------------------------------------------
 
-import { deriveSpine, resolveTitle } from './composePlan'
+import { beatsInPlan, deriveSpine, judgedAgainstBenchmark, resolveTitle } from './composePlan'
 import type { ComposeContext } from './models'
 import { bindingsFor, resolveTemplate } from './templates'
 import type { ViewModel, ViewSection } from './viewModels'
-import type { Recipe } from '../data/recipeTypes'
+import type { Recipe } from '../data/recipe_schema'
 import { semanticsFor } from '../data/semanticModel'
 import { VIEW_FIXTURES, fixtureKey } from '../data/viewFixtures'
 
@@ -38,13 +38,13 @@ const CATEGORY_LABELS: Record<string, { numeral: string; label: string }> = {
 }
 
 /**
- * A shape that declares a benchmark is judged against it, so its "where we stand"
- * is always "…vs benchmark". Read off the declaration, not off the family.
+ * A shape judged against a bar reads its "where we stand" as "…vs benchmark". Read
+ * off the recipe's own declaration, not off the family.
  */
-function categoryFor(category: string, judgedAgainstBenchmark: boolean): string {
+function categoryFor(category: string, vsBenchmark: boolean): string {
   const entry = CATEGORY_LABELS[category]
   if (!entry) return category
-  const suffix = judgedAgainstBenchmark && category === 'stand' ? ' vs benchmark' : ''
+  const suffix = vsBenchmark && category === 'stand' ? ' vs benchmark' : ''
   return `${entry.numeral} ${entry.label}${suffix}`
 }
 
@@ -57,20 +57,26 @@ export function composeView(
   /** Deepen scopes promoted onto the view. Order is the order they were added. */
   promoted: string[] = [],
 ): ViewModel | null {
-  const fixture = VIEW_FIXTURES[fixtureKey(context.workspace, recipe.id)]
+  const fixture = VIEW_FIXTURES[fixtureKey(context.workflow, recipe.id)]
   if (!fixture) return null
 
-  const bindings = bindingsFor(semanticsFor(context.workspace), context.period)
-  const judgedAgainstBenchmark = Boolean(recipe.spine.benchmark)
+  const bindings = bindingsFor(semanticsFor(context.workflow), context.period)
+  const vsBenchmark = judgedAgainstBenchmark(recipe)
 
   // Beat order comes from the recipe; a beat with no fixture simply isn't rendered.
-  // That's what keeps the scorecard's two thin optional beats out of the view
-  // without anything here knowing they're optional, or why.
-  const rendered = recipe.beats.filter((beat) => fixture.beats[beat.id] !== undefined)
+  //
+  // Gated on `beatsInPlan` as well, so the view can only ever contain beats the plan
+  // actually offered. Two independent conditions, and they say different things: the
+  // plan decides what this shape's answer CONSISTS of, the fixture decides what has
+  // been BUILT. A beat needs both.
+  const inPlan = new Set(beatsInPlan(recipe).map((beat) => beat.id))
+  const rendered = recipe.beats.filter(
+    (beat) => inPlan.has(beat.id) && fixture.beats[beat.id] !== undefined,
+  )
 
   const sections: ViewSection[] = rendered.map((beat) => ({
     id: beat.id,
-    category: categoryFor(beat.category, judgedAgainstBenchmark),
+    category: categoryFor(beat.category, vsBenchmark),
     question: resolveTemplate(beat.question, bindings),
     // From the fixture, not from `beat.builds` — see BeatView.subtitle.
     subtitle: fixture.beats[beat.id].subtitle,

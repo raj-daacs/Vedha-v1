@@ -9,7 +9,9 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback } from 'react'
-import { selectRecipe } from '../data/selectRecipe'
+import { resolve } from '../data/resolve'
+import type { Picks } from '../data/resolve'
+import type { RecipeId } from '../data/recipe_schema'
 import { useApp } from './AppContext'
 
 export function useReplan() {
@@ -19,20 +21,50 @@ export function useReplan() {
     /**
      * @param intent   the revised ask
      * @param override a recipe picked explicitly from the eligible list. Still inside
-     *                 the workspace's own set, so the standpoint rule holds — this
+     *                 the workflow's own set, so the standpoint rule holds — this
      *                 chooses *between* eligible shapes, it can't escape them.
      */
-    (intent: string, override?: string | null) => {
+    (intent: string, override?: RecipeId | null) => {
       const asked = intent.trim()
       if (!asked) return
 
-      const recipeId = override ?? selectRecipe(asked, state.workspace).recipe?.id ?? null
+      const picks: Picks = {
+        workflow: state.workflow,
+        output: state.output,
+        period: state.period,
+        outputTouched: state.outputTouched,
+        periodTouched: state.periodTouched,
+      }
+      const resolved = resolve(picks, asked)
 
-      // SUBMIT_INTENT already resets the build and clears the old plan's edits, and
-      // routes to the thread. If the revision resolves to nothing it lands on the
-      // ask-again state instead — which is the honest outcome, not a failure.
-      dispatch({ type: 'SUBMIT_INTENT', intent: asked, recipeId })
+      // SUBMIT_INTENT resets the build, clears the old plan's edits and routes to the
+      // thread. There is no failing branch: the resolver always lands somewhere
+      // defensible within this workflow.
+      dispatch({
+        type: 'SUBMIT_INTENT',
+        intent: asked,
+        resolved: override
+          ? // An explicit pick outranks whatever the text said about the shape, and is
+            // recorded as `picked` so the Build step credits the operator rather than
+            // claiming it recognised something.
+            {
+              ...resolved,
+              recipe: override,
+              sources: { ...resolved.sources, recipe: 'picked' },
+              flags: resolved.flags.filter(
+                (flag) => flag !== 'assumed_primary_recipe' && flag !== 'off_domain_text',
+              ),
+            }
+          : resolved,
+      })
     },
-    [dispatch, state.workspace],
+    [
+      dispatch,
+      state.workflow,
+      state.output,
+      state.period,
+      state.outputTouched,
+      state.periodTouched,
+    ],
   )
 }

@@ -16,7 +16,7 @@ import type { BuildModel, ComposeContext, PlanModel } from './models'
 import { shortRecipeName } from './templates'
 import type { DeepenModel, ViewModel } from './viewModels'
 import { getRecipe } from '../data/recipes'
-import type { Family } from '../data/recipeTypes'
+import type { Family } from '../data/recipe_schema'
 import { useApp } from '../state/AppContext'
 
 export interface Composition {
@@ -24,7 +24,7 @@ export interface Composition {
   build: BuildModel | null
   plan: PlanModel | null
   /**
-   * Null when this (workspace, recipe) pair has no rendered view yet — the
+   * Null when this (workflow, recipe) pair has no rendered view yet — the
    * plan-deep case. The screen shows the "rolling out" placeholder instead.
    */
   view: ViewModel | null
@@ -45,8 +45,8 @@ export interface Composition {
 
 export function useComposition(): Composition {
   const { state } = useApp()
-  const { recipeId, submittedIntent, workspace, level, output, period } = state
-  const { deepenScope, promoted, editBeat, beatReads } = state
+  const { recipeId, submittedIntent, workflow, altitude, output, period } = state
+  const { deepenScope, promoted, editBeat, beatReads, resolution } = state
 
   return useMemo(() => {
     const recipe = recipeId ? getRecipe(recipeId) : undefined
@@ -61,10 +61,10 @@ export function useComposition(): Composition {
       }
     }
 
-    const context: ComposeContext = { intent: submittedIntent, workspace, level, output, period }
+    const context: ComposeContext = { intent: submittedIntent, workflow, altitude, output, period }
 
     return {
-      build: composeBuild(recipe, context),
+      build: composeBuild(recipe, context, resolution),
       plan: composePlan(recipe, context, { editBeat, beatReads }),
       view: composeView(recipe, context, promoted),
       deepen: composeDeepen(recipe, context, deepenScope, promoted),
@@ -74,13 +74,14 @@ export function useComposition(): Composition {
   }, [
     recipeId,
     submittedIntent,
-    workspace,
-    level,
+    workflow,
+    altitude,
     output,
     period,
     deepenScope,
     promoted,
     editBeat,
     beatReads,
+    resolution,
   ])
 }

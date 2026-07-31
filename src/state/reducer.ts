@@ -5,29 +5,32 @@
 // from `recipeId` + context, so there is exactly one source of truth.
 // ---------------------------------------------------------------------------
 
-import {
-  DEFAULT_LEVEL,
-  DEFAULT_OUTPUT,
-  DEFAULT_PERIOD,
-  DEFAULT_WORKSPACE,
-} from '../data/workspaces'
+import { getWorkflow, workflowsForLevel } from '../data/recipes'
+import type { WorkflowName } from '../data/recipe_schema'
+import { DEFAULT_ALTITUDE, DEFAULT_WORKFLOW } from '../data/scope'
 import type { Action, AppState } from './types'
+
+// Output and period have no global default any more — a default only means something
+// relative to a standpoint, so both are seeded from whichever workflow is selected.
+const DEFAULT_SCOPE = getWorkflow(DEFAULT_WORKFLOW)
 
 export const initialState: AppState = {
   screen: 'entry',
   rail: 'new',
-  workspace: DEFAULT_WORKSPACE,
-  level: DEFAULT_LEVEL,
-  output: DEFAULT_OUTPUT,
-  period: DEFAULT_PERIOD,
+  workflow: DEFAULT_WORKFLOW,
+  altitude: DEFAULT_ALTITUDE,
+  output: DEFAULT_SCOPE.outputDefault,
+  period: DEFAULT_SCOPE.periodDefault,
+  outputTouched: false,
+  periodTouched: false,
   draftIntent: '',
   submittedIntent: '',
-  // The design file ships the picker open to document that state; at rest it's closed.
-  pickerOpen: false,
+  // The design file ships a picker open to document that state; at rest none is.
+  pickerOpen: null,
   recipeId: null,
+  resolution: null,
   buildStep: -1,
   planRevealed: false,
-  unrecognised: null,
   deepenScope: null,
   promoted: [],
   viewStep: -1,
@@ -56,10 +59,35 @@ const CLEAN_PLAN = {
 /** The context the operator sets. Survives "New" — where you stand isn't the question. */
 function contextOf(state: AppState) {
   return {
-    workspace: state.workspace,
-    level: state.level,
+    workflow: state.workflow,
+    altitude: state.altitude,
     output: state.output,
     period: state.period,
+    outputTouched: state.outputTouched,
+    periodTouched: state.periodTouched,
+  }
+}
+
+/**
+ * Move to a workflow and re-seed the scope around it.
+ *
+ * Output and period are re-seeded from the new workflow's own defaults, but ONLY
+ * where the operator hasn't chosen them. A deliberate pick survives a scope change —
+ * "pre-selected, never restricted" cuts both ways: the scope proposes, and once the
+ * operator has answered, it stops proposing.
+ *
+ * The touched flags themselves are deliberately NOT cleared here: having chosen
+ * Readout once, the operator meant it, and silently reverting to the new workflow's
+ * default would be the app overruling them.
+ */
+function withWorkflow(state: AppState, workflow: WorkflowName): AppState {
+  const config = getWorkflow(workflow)
+  return {
+    ...state,
+    workflow,
+    altitude: config.level,
+    output: state.outputTouched ? state.output : config.outputDefault,
+    period: state.periodTouched ? state.period : config.periodDefault,
   }
 }
 
@@ -74,51 +102,67 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...initialState, ...contextOf(state) }
 
     case 'SET_DRAFT':
-      return { ...state, draftIntent: action.value, unrecognised: null }
+      return { ...state, draftIntent: action.value }
 
     case 'TOGGLE_PICKER':
-      return { ...state, pickerOpen: !state.pickerOpen }
+      return {
+        ...state,
+        pickerOpen: state.pickerOpen === action.picker ? null : action.picker,
+      }
 
-    case 'SET_WORKSPACE':
-      return { ...state, workspace: action.workspace }
+    case 'CLOSE_PICKER':
+      return { ...state, pickerOpen: null }
 
-    case 'SET_LEVEL':
-      return { ...state, level: action.level }
+    case 'SET_WORKFLOW':
+      // Close on pick: the workflow is the one dimension where choosing is the whole
+      // errand, so leaving the list open afterwards just asks to be dismissed.
+      return { ...withWorkflow(state, action.workflow), pickerOpen: null }
 
+    case 'SET_ALTITUDE': {
+      // Altitude cascades: a workflow belongs to exactly one altitude, so the
+      // current one is almost certainly not reachable from the new one. Land on the
+      // first workflow there rather than leaving an impossible pair on screen.
+      if (action.altitude === state.altitude) return state
+      const [first] = workflowsForLevel(action.altitude)
+      return withWorkflow({ ...state, altitude: action.altitude }, first.name)
+    }
+
+    // The two deliberate picks. Recording the touch is the whole point — see
+    // AppState.outputTouched.
     case 'SET_OUTPUT':
-      return { ...state, output: action.output }
+      return { ...state, output: action.output, outputTouched: true }
 
     case 'SET_PERIOD':
-      return { ...state, period: action.period }
+      return { ...state, period: action.period, periodTouched: true }
 
     case 'SUBMIT_INTENT': {
       const intent = action.intent.trim()
       if (!intent) return state
 
-      // No recognised shape — stay on Entry and say so. Guessing a plan here
-      // would be the one thing an analyst shouldn't do.
-      if (!action.recipeId) {
-        return {
-          ...state,
-          workspace: action.workspace ?? state.workspace,
-          period: action.period ?? state.period,
-          draftIntent: intent,
-          pickerOpen: false,
-          unrecognised: intent,
-        }
-      }
+      // There is no no-match branch any more. The resolver always produces a
+      // defensible query, because the operator always has a scope — so every ask
+      // goes to the thread, and what varies is only how much was assumed.
+      const { resolved } = action
+      const base = action.workflow ? withWorkflow(state, action.workflow) : state
 
       return {
-        ...state,
+        ...base,
         rail: 'new',
         screen: 'thread',
-        workspace: action.workspace ?? state.workspace,
-        period: action.period ?? state.period,
+        // The resolved values become the context: if the text said "this month", the
+        // chips must agree with the answer they're about to see. Not marked as
+        // touched — the operator didn't pick these, the resolver read them.
+        output: resolved.output,
+        period: resolved.period,
         draftIntent: intent,
         submittedIntent: intent,
-        pickerOpen: false,
-        unrecognised: null,
-        recipeId: action.recipeId,
+        pickerOpen: null,
+        recipeId: resolved.recipe,
+        resolution: {
+          sources: resolved.sources,
+          flags: resolved.flags,
+          ...(resolved.focus ? { focus: resolved.focus } : {}),
+        },
         // First step goes active immediately — the agent starts working the moment
         // you ask, with no dead frame in between.
         buildStep: 0,
@@ -147,6 +191,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         screen: 'entry',
         recipeId: null,
+        resolution: null,
         buildStep: -1,
         planRevealed: false,
         ...CLEAN_VIEW,

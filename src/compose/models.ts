@@ -17,16 +17,21 @@
 // ordering is meaningful.
 // ---------------------------------------------------------------------------
 
-import type { Level, Output, Period, Workspace } from '../data/workspaces'
+import type { Altitude, Output, Period, WorkflowName } from '../data/recipe_schema'
 
 /**
- * Everything the operator has told us that isn't the recipe: where they're
- * standing, at what altitude, over what span, and what they asked.
+ * Everything the operator has told us that isn't the recipe: which workflow they're
+ * standing in, at what altitude, over what span, and what they asked.
+ *
+ * These are the RESOLVED values, not the raw picks — by the time a composer sees a
+ * context, the resolver has already merged what was picked with what was typed. How
+ * each one was arrived at (picked · text · default) is carried separately, so a
+ * composer that only needs the value can't accidentally depend on its provenance.
  */
 export interface ComposeContext {
   intent: string
-  workspace: Workspace
-  level: Level
+  workflow: WorkflowName
+  altitude: Altitude
   output: Output
   period: Period
 }
@@ -53,13 +58,50 @@ export interface BuildStep {
   isRecipeStep: boolean
 }
 
+/**
+ * One piece of the restated query. Plain prose unless it carries a resolved value,
+ * in which case `source` says where that value came from.
+ *
+ * The component renders a chip per source and nothing else — it is handed no recipe,
+ * no flags and no ids, so it cannot decide what counts as assumed. That judgement
+ * belongs to the composer.
+ */
+export interface ResolutionSegment {
+  text: string
+  /**
+   * `picked`  — the operator chose it
+   * `text`    — read out of what they typed
+   * `default` — a scoped default, and therefore correctable
+   */
+  source?: 'picked' | 'text' | 'default'
+  /** Tapping this opens Edit A. Set on defaults, because those are the guesses. */
+  correctable?: boolean
+}
+
+/**
+ * Something Vedha should say out loud about how it resolved the ask.
+ *
+ * `assumed` — a defensible default was taken, and here's the alternative.
+ * `check`   — the text landed nowhere; say what we did instead and ask.
+ */
+export interface ResolutionNote {
+  tone: 'assumed' | 'check'
+  text: string
+}
+
 export interface BuildModel {
   /** "Activation — last quarter" */
   title: string
   /** The operator's question, echoed back verbatim. */
   question: string
-  /** First-person narration, split so the subject can carry weight. */
-  narration: { pre: string; strong: string; post: string }
+  /**
+   * The resolved query restated in plain words, each value tagged with where it came
+   * from. This REPLACES the old free-text narration: the two said nearly the same
+   * thing, and only this one can be honest about what was assumed.
+   */
+  resolution: ResolutionSegment[]
+  /** Empty when nothing had to be assumed — the common case once text is specific. */
+  notes: ResolutionNote[]
   steps: BuildStep[]
 }
 
@@ -76,7 +118,7 @@ export interface SpineNode {
 
 /**
  * `in-plan` — this beat set actually reads it.
- * `available` — the workspace has it; this plan doesn't use it.
+ * `available` — the workflow has it; this plan doesn't use it.
  * `add`      — an affordance, not a thing (the dashed "＋ plan" chip).
  */
 export type ChipState = 'in-plan' | 'available' | 'add'
@@ -127,7 +169,7 @@ export interface BeatModel {
    * editing UI it wasn't given.
    *
    * `reads` is the full candidate set — what the recipe declared for this beat plus
-   * what the workspace's semantic model could offer it — each flagged in or out of
+   * what the workflow's semantic model could offer it — each flagged in or out of
    * scope. Toggling one recomposes this beat's `detail` and nothing else, which is
    * the whole point of Edit B.
    */

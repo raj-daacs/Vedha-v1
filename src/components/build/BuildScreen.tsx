@@ -10,6 +10,7 @@
 import { useComposition } from '../../compose/useComposition'
 import { useApp } from '../../state/AppContext'
 import { PlanBlock } from '../plan/PlanBlock'
+import { ResolutionLine } from './ResolutionLine'
 import { StepList } from './StepList'
 import { useBuildSequence } from './useBuildSequence'
 
@@ -40,11 +41,9 @@ export function BuildScreen() {
             Vedha heard before it commits to a plan. */}
         <div className="thread__question">{build.question}</div>
 
-        <p className="thread__narration">
-          {build.narration.pre}
-          <b>{build.narration.strong}</b>
-          {build.narration.post}
-        </p>
+        {/* The resolution, restated and sourced. This replaced a free-text narration
+            line that said nearly the same thing — but couldn't say what it assumed. */}
+        <ResolutionLine segments={build.resolution} notes={build.notes} />
 
         <StepList steps={build.steps} activeIndex={state.buildStep} />
 

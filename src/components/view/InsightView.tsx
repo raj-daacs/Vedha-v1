@@ -11,7 +11,7 @@
 // column inside the scroll container is RIGID — opening the panel recentres it and
 // cannot resize it. Read the note at the top of view.css before touching this.
 //
-// When the (workspace, recipe) pair has no fixture yet, the composer returns null
+// When the (workflow, recipe) pair has no fixture yet, the composer returns null
 // and this says so plainly rather than faking a chart.
 // ---------------------------------------------------------------------------
 

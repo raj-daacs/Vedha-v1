@@ -13,10 +13,13 @@
 // ---------------------------------------------------------------------------
 
 import type { PanelSpec } from '../../compose/viewModels'
+import { Bridge } from './Bridge'
 import { CohortMatrix } from './CohortMatrix'
 import { Funnel } from './Funnel'
 import { NrrCurve } from './NrrCurve'
 import { RankedBars } from './RankedBars'
+import { Recommendation } from './Recommendation'
+import { ResponseCurve } from './ResponseCurve'
 import { Scorecard } from './Scorecard'
 import { StickinessTrend } from './StickinessTrend'
 import { Trend } from './Trend'
@@ -37,6 +40,12 @@ function AtomBody({ spec }: { spec: PanelSpec }) {
       return <StickinessTrend data={spec.data} />
     case 'nrrCurve':
       return <NrrCurve data={spec.data} />
+    case 'bridge':
+      return <Bridge data={spec.data} />
+    case 'responseCurve':
+      return <ResponseCurve data={spec.data} />
+    case 'recommendation':
+      return <Recommendation data={spec.data} />
   }
 }
 

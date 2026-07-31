@@ -99,7 +99,7 @@
   cursor: pointer;
 }
 
-/* The Workspace chip carries the operator's context, so it reads as set, not empty. */
+/* The Workflow chip carries the operator's context, so it reads as set, not empty. */
 .cmd__chip--accent {
   border-color: var(--teal);
   background: var(--teal-tint);
@@ -110,8 +110,20 @@
   color: var(--ink-muted);
 }
 
+/* Whose panel is showing. Each chip opens only its own dimension now, so the row has
+   to say which one is responsible for the list below it — otherwise the panel looks
+   like it belongs to the card rather than to a chip. */
+.cmd__chip--open {
+  border-color: var(--ink-muted);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .cmd__caret {
   color: var(--ink-faint);
+}
+
+.cmd__chip--open .cmd__caret {
+  color: var(--ink-body);
 }
 
 .cmd__send {
@@ -199,8 +211,31 @@
   background: var(--teal-tint);
 }
 
+/* The right-hand side of a row: an optional hint, then the tick. */
+.picker__aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+}
+
+/* What an option implies — the workflows an altitude reaches, or the fact that this
+   output is the one the scope pre-selected. Deliberately quiet: it explains the
+   choice, it isn't part of the choice. */
+.picker__hint {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.picker__row--selected .picker__hint {
+  color: var(--teal-deep);
+  opacity: 0.7;
+}
+
 /* The secondary dimensions' options, inline on the right of their row. Small and
-   quiet at rest — the workspace above is the decision that matters most. */
+   quiet at rest — the workflow above is the decision that matters most. */
 .picker__options {
   display: flex;
   gap: 4px;
