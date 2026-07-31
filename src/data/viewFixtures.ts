@@ -127,16 +127,41 @@ const ACTIVATION_FUNNEL: ViewFixture = {
   subtitle: "where we're losing people",
   meta: `Activation workflow · funnel + cohort · last ${WEEKLY_ACTIVATION.length} weeks`,
   beats: {
-    fc_stand: {
-      subtitle: `Activated ÷ New, per weekly cohort · vs the ${ACTIVATION_TARGET}% target`,
+    // THE FUNNEL LEADS. Same artifact that used to sit in the why-step beat, now the
+    // first block — it is the operator's working surface, and it fuses "where we
+    // stand" (the rate, as the headline) with the top-level "why" (the marked leak)
+    // into one thing to look at. The numbers are unchanged; only the order is.
+    fc_funnel: {
+      subtitle: 'Share of new users reaching each step · New → value moment',
       headline: {
         value: `${activationAverage}%`,
         delta: {
           text: `▼ ${activationGap} pts below the ${ACTIVATION_TARGET}% target`,
           tone: 'bad',
         },
-        note: 'quarter average · flat all quarter',
+        note: 'activated ÷ new · quarter average',
       },
+      panels: [{ atom: 'funnel', data: { steps: ONBOARDING_STEPS, finalNote: 'activated' } }],
+      takeaway: `${activationAverage}% of new users reach the value moment, ${activationGap} points under the ${ACTIVATION_TARGET}% target — and the single biggest drop is at Connect data, where only ${connectDataPass}% of users who finish Setup get through, versus 88–92% at every other step. Roughly ${lostAtConnectData} of every 100 signups are lost right there. Fix that one step and the whole funnel lifts.`,
+    },
+
+    fc_why_seg: {
+      subtitle: `Connect-data completion by ICP / segment · vs the ${segmentAverage}% average`,
+      panels: [
+        {
+          atom: 'rankedBars',
+          data: { bars: CONNECT_DATA_BY_SEGMENT, averageLabel: 'avg', unit: '%' },
+        },
+      ],
+      takeaway: `The leak is concentrated in ${worstSegment.label} self-serve — ${worstSegment.value}% clear Connect data, versus ${bestSegment.value}% for ${bestSegment.label} (who get CS-guided onboarding). ${worstSegment.label} sits ${segmentAverage - worstSegment.value} points below average and is what pulls the whole activation rate down. The fix and the segment point to the same place: guided setup at Connect data for ${worstSegment.label}.`,
+    },
+
+    // THE TREND TRAILS, drawn back. It is a measure ON the flow rather than the flow,
+    // so it answers "is this getting better" once the funnel has already said what the
+    // shape is. The maturation matrix rides here too: both are reads over TIME, which
+    // is what makes them the pair that follows rather than leads.
+    fc_trend: {
+      subtitle: `Activated ÷ New per weekly cohort · vs the ${ACTIVATION_TARGET}% target`,
       panels: [
         {
           atom: 'trend',
@@ -154,24 +179,7 @@ const ACTIVATION_FUNNEL: ViewFixture = {
           data: maturationMatrix,
         },
       ],
-      takeaway: `Mature cohorts settle at ${matureRange.low}–${matureRange.high}%, short of the ${ACTIVATION_TARGET}% goal, and the rate is flat across the quarter — no drift up or down. The newest cohorts (the unfilled cells running down to the lower right) are still climbing.`,
-    },
-
-    fc_why_step: {
-      subtitle: 'Share of new users reaching each step · New → value moment',
-      panels: [{ atom: 'funnel', data: { steps: ONBOARDING_STEPS, finalNote: 'activated' } }],
-      takeaway: `The single biggest drop is at Connect data — only ${connectDataPass}% of users who finish Setup get through it, versus 88–92% at every other step. Roughly ${lostAtConnectData} of every 100 signups are lost right here. Fix this one step and the whole funnel lifts.`,
-    },
-
-    fc_why_seg: {
-      subtitle: `Connect-data completion by ICP / segment · vs the ${segmentAverage}% average`,
-      panels: [
-        {
-          atom: 'rankedBars',
-          data: { bars: CONNECT_DATA_BY_SEGMENT, averageLabel: 'avg', unit: '%' },
-        },
-      ],
-      takeaway: `The leak is concentrated in ${worstSegment.label} self-serve — ${worstSegment.value}% clear Connect data, versus ${bestSegment.value}% for ${bestSegment.label} (who get CS-guided onboarding). ${worstSegment.label} sits ${segmentAverage - worstSegment.value} points below average and is what pulls the whole activation rate down. The fix and the segment point to the same place: guided setup at Connect data for ${worstSegment.label}.`,
+      takeaway: `Neither improving nor drifting: mature cohorts settle at ${matureRange.low}–${matureRange.high}% across the whole quarter, with no seasonal dip. A gap that holds this steady for ${WEEKLY_ACTIVATION.length} weeks is structural — it will not close on its own, which is why the leak above is the thing to act on rather than waiting.`,
     },
   },
 
@@ -184,9 +192,9 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         'A scoped question re-runs the same reasoning from that section’s standpoint, which is usually a sharper answer than asking across everything.',
       ],
     },
-    fc_stand: {
-      scopeLabel: 'deepen · where we stand',
-      title: 'Activation rate — deeper',
+    fc_trend: {
+      scopeLabel: 'deepen · the trend',
+      title: 'Is the rate moving — deeper',
       body: [
         `The newest cohorts are still maturing, so the settled rate is closer to ${activationAverage}–${activationAverage + 1}% than to the raw quarter average.`,
         'The flatness matters: there is no seasonal dip and no drift. A gap that holds steady across thirteen weeks is structural, which means it will not close on its own.',
@@ -196,11 +204,11 @@ const ACTIVATION_FUNNEL: ViewFixture = {
         takeaway: `Flat across all ${WEEKLY_ACTIVATION.length} weeks with no seasonal shape — the ${activationGap}-point gap to ${ACTIVATION_TARGET}% is structural, so it needs a fix rather than patience.`,
       },
     },
-    fc_why_step: {
-      scopeLabel: 'deepen · connect data',
-      title: 'Connect data — deeper',
+    fc_funnel: {
+      scopeLabel: 'deepen · the funnel',
+      title: 'The funnel and its leak — deeper',
       body: [
-        `Only ${connectDataPass}% of users who finish Setup clear this step.`,
+        `${activationAverage}% reach the value moment, and only ${connectDataPass}% of users who finish Setup clear Connect data.`,
         'Split by onboarding path rather than by segment: CS-guided runs 71%, self-serve 48%. The path someone is on predicts this step better than who they are.',
       ],
       promotedSection: {
@@ -1216,6 +1224,271 @@ const MONETISATION_PRICE: ViewFixture = {
 }
 
 // ===========================================================================
+// FUNCTIONAL · Acquisition — funnel_conversion's OTHER home
+//
+// The same recipe that renders the onboarding funnel on Activation, pointed at the
+// top of the funnel. Nothing in the compose layer or the components knows the
+// difference: the recipe supplies the beats, this fixture supplies what they draw,
+// and the pair `Acquisition:funnel_conversion` is the whole switch.
+//
+// Note which dimension the `why_seg` beat slices by. On Activation it's segment; here
+// it's channel — because that's what Acquisition's semantic model offers. The beat is
+// identical; only the fixture differs.
+// ===========================================================================
+
+/**
+ * Reach at each stage, as a share of visitors. MONOTONICALLY DESCENDING — a funnel
+ * that widens would compute a pass rate above 100% and silently invert the
+ * worst-step marker, so `check:recipes` asserts the descent.
+ */
+const TOF_STAGES = [
+  { label: 'Visitors', reach: 100 },
+  { label: 'Leads', reach: 30 },
+  { label: 'MQL', reach: 18 },
+  { label: 'SQL', reach: 11 },
+  { label: 'Won', reach: 3 },
+]
+
+/**
+ * Lead Conversion Rate = Won ÷ Leads, per week. Derived from the stages rather than
+ * typed, so the trend's level and the funnel's shape state the same fact — the
+ * headline average lands on Won/Leads by construction.
+ */
+const LEAD_CONV_TARGET = 14
+const LEAD_CONV_WEEKS = [9, 10, 11, 9, 10, 12, 10, 9, 11, 10, 10, 9, 10]
+const leadConvAverage = round(mean(LEAD_CONV_WEEKS))
+const leadConvGap = LEAD_CONV_TARGET - leadConvAverage
+/** Won ÷ Leads straight off the stages — must agree with the weekly average. */
+const wonPerLead = round((TOF_STAGES[4].reach / TOF_STAGES[1].reach) * 100)
+
+/** Pass rate at each gate, and the worst of them — the same derivation Funnel does. */
+const tofPasses = TOF_STAGES.map((stage, i) =>
+  i === 0 ? undefined : round((stage.reach / TOF_STAGES[i - 1].reach) * 100),
+)
+const tofWorstIndex = tofPasses.indexOf(Math.min(...tofPasses.filter((p): p is number => p !== undefined)))
+const tofWorstGate = `${TOF_STAGES[tofWorstIndex - 1].label} → ${TOF_STAGES[tofWorstIndex].label}`
+const tofWorstPass = tofPasses[tofWorstIndex] as number
+
+/** Close rate at the worst gate, by channel. Averages to the overall gate rate. */
+const CLOSE_BY_CHANNEL = [
+  { label: 'organic', value: 34 },
+  { label: 'partner', value: 28 },
+  { label: 'paid search', value: 19 },
+]
+const channelAverage = round(mean(CLOSE_BY_CHANNEL.map((c) => c.value)))
+const worstChannel = CLOSE_BY_CHANNEL[CLOSE_BY_CHANNEL.length - 1]
+const bestChannel = CLOSE_BY_CHANNEL[0]
+
+const ACQUISITION_FUNNEL: ViewFixture = {
+  subtitle: 'where the top of the funnel is losing deals',
+  meta: `Acquisition workflow · funnel · last ${LEAD_CONV_WEEKS.length} weeks`,
+  beats: {
+    // THE FUNNEL LEADS — the same stages that used to sit in the why-step beat, now
+    // first, carrying the rate-vs-target headline. Identical numbers; only the order
+    // changed. The rate and the shape were always the same fact stated twice, and this
+    // is what saying it once looks like.
+    fc_funnel: {
+      subtitle: 'Share of visitors reaching each stage · Visitors → Won',
+      headline: {
+        value: `${leadConvAverage}%`,
+        delta: {
+          text: `▼ ${leadConvGap} pts below the ${LEAD_CONV_TARGET}% target`,
+          tone: 'bad',
+        },
+        note: 'won ÷ leads · quarter average',
+      },
+      panels: [{ atom: 'funnel', data: { steps: TOF_STAGES, finalNote: 'won' } }],
+      takeaway: `Lead conversion is ${leadConvAverage}% against a ${LEAD_CONV_TARGET}% target, and the funnel says why: the worst gate is ${tofWorstGate} at ${tofWorstPass}%, where every earlier stage passes ${Math.min(...tofPasses.slice(1, tofWorstIndex).filter((p): p is number => p !== undefined))}% or better. Volume is not the problem — ${TOF_STAGES[3].reach} of every 100 visitors reach SQL and only ${TOF_STAGES[4].reach} close. Won ÷ Leads off the stages is ${wonPerLead}%, the same number from the other direction.`,
+    },
+
+    fc_why_seg: {
+      subtitle: `${tofWorstGate} close rate by channel · vs the ${channelAverage}% average`,
+      panels: [
+        {
+          atom: 'rankedBars',
+          data: { bars: CLOSE_BY_CHANNEL, averageLabel: 'avg', unit: '%' },
+        },
+      ],
+      takeaway: `${worstChannel.label} closes at ${worstChannel.value}% against ${bestChannel.label}'s ${bestChannel.value}% — ${bestChannel.value - worstChannel.value} points apart at the same gate. The channel bringing the most volume is the one least able to close it, which is a targeting problem upstream rather than a sales problem at the gate.`,
+    },
+
+    // THE TREND TRAILS, drawn back. A measure on the flow, answering "is this getting
+    // better" after the funnel has said what the shape is — not the lead.
+    fc_trend: {
+      subtitle: `Won ÷ Leads per week · vs the ${LEAD_CONV_TARGET}% target`,
+      panels: [
+        {
+          atom: 'trend',
+          label: 'Lead conversion rate, weekly',
+          data: {
+            points: series(LEAD_CONV_WEEKS, (i) => `wk ${i + 1}`),
+            yTicks: [16, 13, 10, 7],
+            target: { value: LEAD_CONV_TARGET, label: `target ${LEAD_CONV_TARGET}%` },
+            unit: '%',
+          },
+        },
+      ],
+      takeaway: `Neither improving nor drifting — ${leadConvAverage}% for ${LEAD_CONV_WEEKS.length} straight weeks. A rate that moved would point at something that changed; one this flat says the constraint is structural, which is the ${tofWorstGate} gate above rather than anything about this quarter.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole funnel, or select a section to scope the question to it.',
+        'Top-of-funnel questions are usually about one gate, or about which channel behaves differently at it.',
+      ],
+    },
+    fc_trend: {
+      scopeLabel: 'deepen · the trend',
+      title: 'Is the rate moving — deeper',
+      body: [
+        `${leadConvAverage}% against a ${LEAD_CONV_TARGET}% target, flat for ${LEAD_CONV_WEEKS.length} weeks.`,
+        `Flat matters as much as low: a rate that moved would point at something that changed. This one has sat still all quarter, which says the constraint is structural — the ${tofWorstGate} gate below.`,
+      ],
+      promotedSection: {
+        question: 'Is the rate low or just flat?',
+        takeaway: `Both, and the flatness is the more useful fact. ${leadConvAverage}% for ${LEAD_CONV_WEEKS.length} straight weeks against a ${LEAD_CONV_TARGET}% target means nothing being tried is moving it.`,
+      },
+    },
+    fc_funnel: {
+      scopeLabel: 'deepen · the funnel',
+      title: `The funnel and its leak — deeper`,
+      body: [
+        `${leadConvAverage}% lead conversion, and ${tofWorstPass}% of SQLs close against ${tofPasses[2]}% and ${tofPasses[3]}% at the two gates before it.`,
+        'The funnel is well-behaved until the last step. That points away from lead quality in aggregate and toward what happens once a deal is qualified — which the channel split tests directly.',
+      ],
+      promotedSection: {
+        question: 'Where in the funnel is the constraint?',
+        takeaway: `At ${tofWorstGate}. ${TOF_STAGES[3].reach} of 100 visitors reach SQL and ${TOF_STAGES[4].reach} close — a ${tofWorstPass}% gate, against 60%+ everywhere above it.`,
+      },
+    },
+    fc_why_seg: {
+      scopeLabel: 'deepen · by channel',
+      title: 'Which channel — deeper',
+      body: [
+        `${bestChannel.label} ${bestChannel.value}%, partner ${CLOSE_BY_CHANNEL[1].value}%, ${worstChannel.label} ${worstChannel.value}% — all at the same gate.`,
+        `A ${bestChannel.value - worstChannel.value}-point spread at one gate is a difference in what the channel sends, not in how it is worked. Same team, same stage, same close motion.`,
+      ],
+      promotedSection: {
+        question: 'Is paid search worth its volume?',
+        takeaway: `Not at this close rate. ${worstChannel.label} closes ${worstChannel.value}% against a ${channelAverage}% average — it fills the middle of the funnel with deals that do not convert, which costs qualification time as well as spend.`,
+      },
+    },
+  },
+}
+
+// ===========================================================================
+// FUNCTIONAL · Activation — cohort_longitudinal's OTHER home
+//
+// The same recipe that renders retention cohorts, pointed at activation by signup
+// cohort. Activation is a DUAL-RECIPE workflow, so this is the secondary lens: the
+// resolver takes the funnel for a vague ask and reaches this one only when the text
+// names cohorts. Nothing here participates in that decision.
+//
+// REUSES THE ACTIVATION CONSTANTS the funnel view already reads — WEEKLY_ACTIVATION,
+// MATURATION_CURVE, ACTIVATION_TARGET, and `maturationMatrix` itself. So the two
+// Activation views cannot disagree about activation: there is one set of numbers and
+// two lenses on it, rather than two truths that need reconciling.
+//
+// The matrix therefore appears in both — as supporting evidence on the funnel's stand
+// beat, and as the SUBJECT here. That's deliberate. Inventing a second activation
+// dataset to avoid the overlap would trade a cosmetic repeat for a real risk of drift.
+// ===========================================================================
+
+/**
+ * The maturation curve in absolute terms: an average cohort's activation rate by
+ * weeks since signup. `activationAverage × share`, using the same shares the matrix
+ * cells use — so a cohort sitting at the average reproduces this curve exactly, which
+ * is what `check:recipes` asserts.
+ */
+const ACTIVATION_BY_AGE = MATURATION_CURVE.map((share) => round(activationAverage * share))
+const activationAtWeek1 = ACTIVATION_BY_AGE[1]
+const activationMature = ACTIVATION_BY_AGE[ACTIVATION_BY_AGE.length - 1]
+/** The first age at which a cohort has essentially finished maturing. */
+const maturityWeek = MATURATION_CURVE.findIndex((share) => share >= 0.98)
+/** Share of the final rate already reached by the end of week 1. */
+const earlyShare = Math.round(MATURATION_CURVE[1] * 100)
+
+const ACTIVATION_COHORT: ViewFixture = {
+  subtitle: 'how each signup cohort matures',
+  meta: `Activation workflow · cohort matrix · ${WEEKLY_ACTIVATION.length} cohorts × ${MATURATION_CURVE.length} weeks`,
+  beats: {
+    // Trend, not NrrCurve. A maturation curve climbs to a plateau — it has no trough
+    // to split at and no 100% line to cross, which is all NrrCurve exists to draw.
+    co_stand: {
+      subtitle: `Activation by weeks since signup · vs the ${ACTIVATION_TARGET}% target`,
+      headline: {
+        value: `${activationMature}%`,
+        delta: {
+          text: `▼ ${activationGap} pts below the ${ACTIVATION_TARGET}% target`,
+          tone: 'bad',
+        },
+        note: `settled by week ${maturityWeek} · same rate the weekly trend averages`,
+      },
+      panels: [
+        {
+          atom: 'trend',
+          label: 'How far an average cohort has activated, by week since signup',
+          data: {
+            points: series(ACTIVATION_BY_AGE, (age) => `w${age}`),
+            yTicks: [55, 40, 25, 10],
+            target: { value: ACTIVATION_TARGET, label: `target ${ACTIVATION_TARGET}%` },
+            unit: '%',
+          },
+        },
+      ],
+      takeaway: `A cohort reaches ${activationAtWeek1}% by the end of week 1 — ${earlyShare}% of everything it will ever reach — and settles at ${activationMature}% by week ${maturityWeek}. Activation is decided in the first fortnight; after that a cohort barely moves, so there is little to win by working older cohorts.`,
+    },
+
+    co_why: {
+      subtitle: 'Each signup week × weeks since signup · every cohort’s path',
+      // The same object the funnel view borrows as evidence. One matrix, so the two
+      // Activation views cannot disagree about any cell.
+      panels: [{ atom: 'cohortMatrix', data: maturationMatrix }],
+      takeaway: `Every cohort climbs the same shape — the dip and the plateau arrive at the same age regardless of signup week, so maturation is a property of the lifecycle rather than of any particular week. Mature cohorts settle in a ${matureRange.low}–${matureRange.high}% band, which is tight enough that cohort quality is not what is holding the rate down.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the curve and the matrix together, or select one to scope the question to it.',
+        'The curve answers "how fast does a cohort mature"; the matrix answers "does that differ by cohort". Most follow-ups are one of the two.',
+      ],
+    },
+    co_stand: {
+      scopeLabel: 'deepen · the curve',
+      title: 'How a cohort matures — deeper',
+      body: [
+        `${activationAtWeek1}% by week 1, ${activationMature}% by week ${maturityWeek}, then flat.`,
+        `${earlyShare}% of a cohort's final activation happens in its first week. That is where any intervention has to land — a nudge in week 4 is arriving after the outcome has already been decided for most of the cohort.`,
+      ],
+      promotedSection: {
+        question: 'When is activation actually decided?',
+        takeaway: `In the first week. A cohort reaches ${activationAtWeek1}% of ${activationMature}% — ${earlyShare}% of its eventual rate — before week 2 begins, and adds only ${activationMature - activationAtWeek1} points across every week after.`,
+      },
+    },
+    co_why: {
+      scopeLabel: 'deepen · by cohort',
+      title: 'Whether cohorts differ — deeper',
+      body: [
+        `Read down a column to compare cohorts at the same age. Mature cohorts land in a ${matureRange.low}–${matureRange.high}% band, a spread of ${matureRange.high - matureRange.low} points.`,
+        'The unfilled cells running to the lower right are cohorts too young to have matured, not missing data. Comparing a recent cohort to an old one on final rate would read those as a decline that has not happened.',
+      ],
+      promotedSection: {
+        question: 'Are recent cohorts worse, or just younger?',
+        takeaway: `Just younger. Compared at equal age rather than equal date, cohorts sit within ${matureRange.high - matureRange.low} points of each other — the apparent drop-off in the newest rows is immaturity, not decay.`,
+      },
+    },
+  },
+}
+
+// ===========================================================================
 // The registry
 // ===========================================================================
 
@@ -1238,6 +1511,12 @@ export const VIEW_FIXTURES: Record<string, ViewFixture> = {
   // The scorecard's second home — no new atom. See the fixture's note.
   'Cost & Burn:state_scorecard': COST_BURN_SCORECARD,
 
-  // The response family's only view, and the last plan-deep pair to land.
+  // The response family's only view.
   'Monetisation:price_sensitivity': MONETISATION_PRICE,
+
+  // Each recipe's SECOND home. These two keys are the entire mechanism by which the
+  // funnel renders for two workflows and the cohort for two: no component or composer
+  // knows a workflow name, so a pair renders exactly when its key is present.
+  'Acquisition:funnel_conversion': ACQUISITION_FUNNEL,
+  'Activation:cohort_longitudinal': ACTIVATION_COHORT,
 }

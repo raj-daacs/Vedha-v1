@@ -116,7 +116,7 @@ const SPEC_CASES: SpecCase[] = [
   { n: 7, workflow: 'Retention', text: "how's retention doing", recipe: 'cohort_longitudinal', recipeSrc: 'default', output: 'report', outputSrc: 'default', period: 'month', periodSrc: 'default', flag: 'assumed_primary_recipe', note: 'vague → primary; Build offers the scorecard' },
   { n: 8, workflow: 'Acquisition', text: 'show me this month status', recipe: 'funnel_conversion', recipeSrc: 'default', output: 'report', outputSrc: 'default', period: 'month', periodSrc: 'text', note: '"status" looks scorecard-y — the workflow filter blocks the leak' },
   { n: 9, workflow: 'Revenue engine', text: 'how did ARR move last quarter, by segment', recipe: 'movement_bridge', recipeSrc: 'default', output: 'review', outputSrc: 'default', period: 'quarter', periodSrc: 'text', focus: 'segment' },
-  { n: 10, workflow: 'Monetisation', text: 'should we raise the Business tier price', recipe: 'price_sensitivity', recipeSrc: 'default', output: 'report', outputSrc: 'default', period: 'quarter', periodSrc: 'default', focus: 'Business tier', note: 'response family; plan-deep (needs_atom)' },
+  { n: 10, workflow: 'Monetisation', text: 'should we raise the Business tier price', recipe: 'price_sensitivity', recipeSrc: 'default', output: 'report', outputSrc: 'default', period: 'quarter', periodSrc: 'default', focus: 'Business tier', note: 'response family · the native "do" beat recommends a move' },
   { n: 11, workflow: 'Activation', text: "what's the weather", recipe: 'funnel_conversion', recipeSrc: 'default', output: 'report', outputSrc: 'default', period: 'week', periodSrc: 'default', flag: 'off_domain_text', note: 'scope defaults carry it, flagged prominently' },
 ]
 
@@ -605,13 +605,133 @@ for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
 }
 
 // ===========================================================================
+// I · Cross-panel coherence
+//
+// Two claims a view makes implicitly by putting two panels next to each other. Both
+// are arithmetic, so both are checkable — and neither is something the eye catches,
+// because each panel is individually plausible.
+// ===========================================================================
+
+console.log('\n=== I · cross-panel coherence ===\n')
+
+// THE WORKING SURFACE LEADS. A funnel and a bridge are the flow itself — the thing the
+// operator works on — so where a view draws one it has to be the FIRST block. A
+// calendar-trend is a measure ON that flow, and leading with it inverts the reading:
+// it puts a number about the shape ahead of the shape.
+//
+// Both funnel views and all three bridge views got this wrong at first, in the same
+// way, which is why it is a check and not a habit.
+const SURFACE_ATOMS = ['funnel', 'bridge'] as const
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const [, recipeId] = key.split(':')
+  const recipe = RECIPES_BY_ID[recipeId as RecipeId]
+  if (!recipe) continue
+
+  // Beat order as the view renders it: the recipe's order, fixture-covered only.
+  const rendered = recipe.beats.filter((beat) => fixture.beats[beat.id] !== undefined)
+  const atomsOf = (beatId: string) => fixture.beats[beatId].panels.map((p) => p.atom)
+  const surfaceBeat = rendered.find((b) =>
+    atomsOf(b.id).some((a) => (SURFACE_ATOMS as readonly string[]).includes(a)),
+  )
+  if (!surfaceBeat || rendered.length === 0) continue
+
+  const leadAtoms = atomsOf(rendered[0].id)
+  const label = `${key} — leads with ${rendered[0].id} [${leadAtoms.join(', ')}]`
+  if (surfaceBeat.id === rendered[0].id) pass(label)
+  else {
+    fail(label)
+    console.log(
+      `        the working surface is on ${surfaceBeat.id}, not the lead. A trend is a\n` +
+        '        measure ON the flow; leading with it puts the measure before the shape.',
+    )
+  }
+}
+console.log()
+
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const panels = Object.values(fixture.beats).flatMap((beat) => beat.panels)
+
+  // A FUNNEL MUST NARROW. Reach is a share of the population still present, so a stage
+  // that reads higher than the one before it is impossible — and the consequence isn't
+  // a visibly broken chart: `Funnel` derives its pass rates from consecutive reaches,
+  // so a widening step yields a rate above 100% and can silently steal the worst-step
+  // marker from the gate that actually leaks.
+  for (const panel of panels) {
+    if (panel.atom !== 'funnel') continue
+    const steps = panel.data.steps
+    const rising = steps.filter((s, i) => i > 0 && s.reach > steps[i - 1].reach)
+    const label = `${key} — funnel descends: ${steps.map((s) => s.reach).join(' → ')}`
+    if (rising.length === 0) pass(label)
+    else {
+      fail(label)
+      console.log(
+        `        these stages widen: ${rising.map((s) => s.label).join(', ')} — a pass rate\n` +
+          '        above 100% would follow, and the worst-step marker becomes unreliable.',
+      )
+    }
+  }
+
+  // A COHORT MATRIX MUST RECONCILE WITH ITS CURVE — but there are TWO ways a curve can
+  // relate to a matrix, depending on which axis it runs along, and a view is coherent
+  // if either holds:
+  //
+  //   ALONG AGE      the curve is one cohort's path, so some ROW traces it.
+  //                  (the two cohort views: m0…m12, w0…w7)
+  //   ACROSS COHORTS the curve is each cohort's settled outcome, so every fully
+  //                  matured row ENDS on its own curve point.
+  //                  (the Activation funnel view: wk 1…wk 13 of signup)
+  //
+  // Both are genuine "these panels describe one dataset" claims. Asserting only the
+  // first flagged the funnel view, where the trend runs across cohorts and shares no
+  // axis with the matrix at all — the check was wrong there, not the data.
+  const curve = panels.find((p) => p.atom === 'trend' || p.atom === 'nrrCurve')
+  const matrix = panels.find((p) => p.atom === 'cohortMatrix')
+  if (!curve || !matrix || matrix.atom !== 'cohortMatrix') continue
+  if (curve.atom !== 'trend' && curve.atom !== 'nrrCurve') continue
+
+  const curveValues = curve.data.points.map((p) => p.value)
+
+  const rowTracingCurve = matrix.data.rows.find((row) => {
+    const observed = row.values.filter((v): v is number => v !== null)
+    return (
+      observed.length >= curveValues.length && curveValues.every((v, i) => observed[i] === v)
+    )
+  })
+
+  // Only rows with nothing left to observe can be compared to a settled outcome; a
+  // still-maturing cohort legitimately ends below its own final rate.
+  const matured = matrix.data.rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row.values.every((v) => v !== null))
+  const endsOnCurve =
+    matured.length > 0 &&
+    matured.every(
+      ({ row, index }) => row.values[row.values.length - 1] === curveValues[index],
+    )
+
+  const label = `${key} — matrix reconciles with its curve`
+  if (rowTracingCurve) {
+    pass(`${label} · along age → row "${rowTracingCurve.label}" traces it`)
+  } else if (endsOnCurve) {
+    pass(`${label} · across cohorts → all ${matured.length} matured rows end on their point`)
+  } else {
+    fail(label)
+    console.log(
+      `        curve [${curveValues.join(', ')}] matches no row along age, and the\n` +
+        '        matured rows do not end on their own curve points. The two panels are\n' +
+        '        not views of the same data — one of them is wrong.',
+    )
+  }
+}
+
+// ===========================================================================
 
 const total = SPEC_CASES.length + ROUTE_CASES.length + WORKFLOWS.length * 2
 console.log(
   failures === 0
     ? `\nALL CHECKS PASS — ${SPEC_CASES.length} spec cases · ${ROUTE_CASES.length} routing · ` +
       `${WORKFLOWS.length * 2} prompt chips · ` +
-      `invariants D–H  (${total} cases)`
+      `invariants D–I  (${total} cases)`
     : `\n${failures} FAILED`,
 )
 
