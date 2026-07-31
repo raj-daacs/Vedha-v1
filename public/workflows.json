@@ -1,0 +1,312 @@
+{
+  "p&l": {
+    "goal": {
+      "metric": "Net Profit",
+      "owner": ["CFO", "CEO", "Board"],
+      "cadence": "monthly",
+      "family": "flow",
+      "recipe": "movement_bridge"
+    },
+    "drivers": [
+      { "metric": "Revenue" },
+      { "metric": "Cost" },
+      { "metric": "Gross Margin" }
+    ],
+    "inputs": [
+      { "metric": "MRR" },
+      { "metric": "COGS" },
+      { "metric": "Opex" }
+    ],
+    "guardrails": [
+      { "metric": "Gross Margin Floor" },
+      { "metric": "Runway" },
+      { "metric": "Rule of 40" }
+    ],
+    "funnel": null,
+    "journey_note": "no lifecycle transition — the P&L is a balance of recognised revenue against incurred cost",
+    "dimensions": [
+      { "name": "cost line", "values": ["COGS", "Opex"] },
+      {
+        "name": "function",
+        "values": [
+          "engineering",
+          "sales",
+          "marketing",
+          "finance",
+          "operations",
+          "customer success"
+        ]
+      },
+      { "name": "period", "values": ["monthly", "quarterly", "yearly"] }
+    ]
+  },
+
+  "revenue_engine": {
+    "goal": {
+      "metric": "MRR → ARR",
+      "team": "RevOps",
+      "owner": "CEO",
+      "cadence": "monthly",
+      "family": "flow",
+      "recipe": "movement_bridge"
+    },
+    "drivers": [
+      { "metric": "Active Paid Seats" },
+      { "metric": "ARPU" },
+      { "metric": "NRR" },
+      { "metric": "GRR" }
+    ],
+    "inputs": [
+      { "metric": "+New +React" },
+      { "metric": "-Churn -Contraction" },
+      { "metric": "+Expansion" },
+      { "metric": "ARPU Factors" }
+    ],
+    "guardrails": [
+      { "metric": "Net New MRR" },
+      { "metric": "NRR" },
+      { "metric": "Burn Multiple" }
+    ],
+    "funnel": ["new", "reactivate", "expand", "contract", "churn"],
+    "dimensions": [
+      {
+        "name": "space",
+        "values": ["acquisition", "activation", "retention", "expansion", "monetisation"]
+      },
+      { "name": "segment", "values": ["enterprise", "mid_market", "smb"] },
+      { "name": "plan/tier", "values": ["free", "custom", "business", "enterprise"] },
+      { "name": "motion", "values": ["self-serve", "sales-led"] }
+    ]
+  },
+
+  "acquisition": {
+    "goal": {
+      "metric": "New Qualified Customers",
+      "team": "Growth",
+      "owner": "Maya",
+      "cadence": "weekly",
+      "family": "flow",
+      "recipe": "funnel_conversion"
+    },
+    "drivers": [
+      { "metric": "Signups" },
+      { "metric": "Qualify Rate" },
+      { "metric": "Channel Mix" }
+    ],
+    "inputs": [
+      { "metric": "Clicks" },
+      { "metric": "CPC" },
+      { "metric": "LP Conversion" }
+    ],
+    "guardrails": [
+      { "metric": "CAC" },
+      { "metric": "Payback" },
+      { "metric": "LTV:CAC" }
+    ],
+    "funnel": [
+      "impression",
+      "click",
+      "landing",
+      "signup-start",
+      "signup-complete",
+      "verify",
+      "New"
+    ],
+    "dimensions": [
+      { "name": "motion", "values": ["self-serve", "sales-led"] },
+      {
+        "name": "channel",
+        "values": ["paid", "organic", "email", "referral", "outbound", "sales_assist"]
+      },
+      {
+        "name": "campaign",
+        "values": [
+          "referral program",
+          "direct HRTech",
+          "paid Search SaaS",
+          "product Lead Health Tech",
+          "content SEO FinTech",
+          "field Sales HRTech"
+        ]
+      },
+      { "name": "ICP/segment", "values": ["enterprise", "mid_market", "smb"] },
+      {
+        "name": "geo",
+        "values": ["united States", "india", "brazil", "united Kingdom", "australia"]
+      }
+    ]
+  },
+
+  "activation": {
+    "goal": {
+      "metric": "Activation Rate (per cohort)",
+      "team": "Onboarding PM",
+      "owner": "Priya",
+      "cadence": "weekly",
+      "family": "flow",
+      "recipe": ["funnel_conversion", "cohort_longitudinal"]
+    },
+    "drivers": [
+      { "metric": "Step Conversion" },
+      { "metric": "Funnel Completion" }
+    ],
+    "inputs": [
+      { "metric": "Step Drop" },
+      { "metric": "Cohort Entered" }
+    ],
+    "guardrails": [
+      { "metric": "Time-to-Value" },
+      { "metric": "Cohort Variance" }
+    ],
+    "funnels": [
+      {
+        "motion": "self-serve",
+        "label": "PLG",
+        "steps": [
+          "New",
+          "setup",
+          "connect data",
+          "first object",
+          "invite team",
+          "core-action ×N",
+          "value moment"
+        ]
+      },
+      {
+        "motion": "sales-led",
+        "label": "CS-guided",
+        "assumption": true,
+        "steps": [
+          "New",
+          "kickoff call",
+          "workspace setup",
+          "data migration",
+          "admin & permissions",
+          "team rollout",
+          "value moment"
+        ]
+      }
+    ],
+    "dimensions": [
+      { "name": "motion", "values": ["self-serve", "sales-led"] },
+      { "name": "cohort", "values": ["weekly", "monthly", "quarterly"] },
+      {
+        "name": "channel-origin",
+        "values": ["content_seo", "field_sales", "paid_search", "product_led", "direct"]
+      },
+      { "name": "plan", "values": ["business", "enterprise", "custom", "free"] }
+    ]
+  },
+
+  "retention": {
+    "goal": {
+      "metric": "Gross Revenue Retention",
+      "team": "CSM",
+      "owner": ["Sam", "Nina"],
+      "cadence": ["monthly", "weekly"],
+      "family": ["flow", "state"],
+      "recipe": ["cohort_longitudinal", "state_scorecard"]
+    },
+    "drivers": [
+      { "metric": "Churn Rate" },
+      { "metric": "Engagement Depth" },
+      { "metric": "Health Score" }
+    ],
+    "inputs": [
+      { "metric": "Active Days" },
+      { "metric": "Feature Breadth" }
+    ],
+    "guardrails": [
+      { "metric": "Cost-to-Serve" },
+      { "metric": "NRR" }
+    ],
+    "funnel": ["Activated", "Core", "Power"],
+    "dimensions": [
+      { "name": "segment", "values": ["enterprise", "mid-market", "smb"] },
+      { "name": "plan/tier", "values": ["free", "business", "enterprise", "custom"] },
+      { "name": "cohort", "values": ["weekly", "monthly", "quarterly"] },
+      { "name": "account size", "values": ["small", "medium", "large"] },
+      { "name": "health band", "values": ["healthy", "warning", "at risk", "critical"] }
+    ]
+  },
+
+  "expansion": {
+    "goal": {
+      "metric": "Net Expansion MRR",
+      "team": "AM",
+      "owner": ["Sam", "Sales"],
+      "cadence": ["monthly", "quarterly"],
+      "family": "flow",
+      "recipe": "movement_bridge"
+    },
+    "drivers": [
+      { "metric": "Expansion Rate" },
+      { "metric": "Seat Utilisation" },
+      { "metric": "Upsell Acceptance" }
+    ],
+    "inputs": [
+      { "metric": "Limit-hit Rate" },
+      { "metric": "Add-on Attach" }
+    ],
+    "guardrails": [
+      { "metric": "Time-to-Expand" },
+      { "metric": "Expansion-NRR Comp" }
+    ],
+    "funnel": ["healthy usage", "limit hit", "readiness", "offer", "Expanded"],
+    "dimensions": [
+      { "name": "segment", "values": ["enterprise", "mid_market", "smb"] },
+      { "name": "plan/tier", "values": ["business", "free", "enterprise", "custom"] },
+      { "name": "account_size", "values": ["small", "medium", "large"] },
+      {
+        "name": "industry",
+        "values": [
+          "saas",
+          "fintech",
+          "hrtech",
+          "healthtech",
+          "ecommerce",
+          "professional_services",
+          "other"
+        ]
+      },
+      { "name": "utilization_band", "values": ["low", "medium", "high", "at_limit"] }
+    ]
+  },
+
+  "monetisation": {
+    "goal": {
+      "metric": "ARPU",
+      "team": ["Exec", "RevOps"],
+      "owner": ["Anya", "Rohan"],
+      "cadence": "quarterly",
+      "family": "response",
+      "recipe": "price_sensitivity"
+    },
+    "drivers": [
+      { "metric": "Price Realisation" },
+      { "metric": "Tier Mix Premium" },
+      { "metric": "Add-on Attach" }
+    ],
+    "inputs": [
+      { "metric": "Effective Discount" },
+      { "metric": "Tier Distribution" },
+      { "metric": "Elasticity" }
+    ],
+    "guardrails": [
+      { "metric": "Discounting Rate" },
+      { "metric": "Price-to-Value" }
+    ],
+    "funnel": null,
+    "journey_note": "no lifecycle transition — operates on price and contract attributes of accounts that are already active",
+    "dimensions": [
+      { "name": "segment", "values": ["enterprise", "mid_market", "smb"] },
+      { "name": "plan/tier", "values": ["business", "free", "enterprise", "custom"] },
+      { "name": "account_size", "values": ["small", "medium", "large"] },
+      {
+        "name": "geo",
+        "values": ["united states", "india", "brazil", "united kingdom", "australia"]
+      },
+      { "name": "self_serve_vs_sales", "values": ["self_serve", "sales_assisted"] }
+    ]
+  }
+}

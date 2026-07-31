@@ -221,3 +221,113 @@
   color: var(--ink-muted);
   font-weight: 400;
 }
+
+/* ---------------------------------------------------------------------------
+   DEFINITION ISSUES — the dev-only banner for what the app had to assume about
+   `workflows.json`. Rendered by AppShell, absent from production bundles.
+
+   ANCHORED BOTTOM-LEFT, PAST THE RAIL, ON PURPOSE. The obvious home is the
+   bottom-right corner, and that is where this sat until it was found covering the
+   deepen panel's "ask about this section" input — the panel is `position: absolute;
+   right: 0` inside the view, so a right-anchored overlay collides with it by
+   construction. Fixing that by z-order would only decide which one loses. Sitting on
+   the opposite edge means neither has to.
+   --------------------------------------------------------------------------- */
+.defissues {
+  position: fixed;
+  left: calc(var(--rail-w) + 14px);
+  bottom: 14px;
+  z-index: 30;
+  max-width: min(520px, calc(100vw - var(--rail-w) - 28px));
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.defissues--warning {
+  border-color: var(--coral-tint);
+}
+
+.defissues--error {
+  border-color: var(--coral);
+}
+
+.defissues__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.defissues__summary:hover {
+  color: var(--ink);
+}
+
+.defissues__badge {
+  padding: 2px 7px;
+  border-radius: var(--r-xs);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  color: var(--ink-faint);
+}
+
+.defissues--error .defissues__badge {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+.defissues__chevron {
+  margin-left: auto;
+  color: var(--ink-faint);
+}
+
+/* Bounded, because a badly broken file can produce a long list and this must not
+   become the page. */
+.defissues__list {
+  margin: 0;
+  padding: 0 0 6px;
+  list-style: none;
+  max-height: 40vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--hairline);
+}
+
+.defissues__item {
+  padding: 6px 10px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.defissues__item + .defissues__item {
+  border-top: 1px dashed var(--hairline);
+}
+
+.defissues__item--error {
+  color: var(--coral);
+}
+
+.defissues__where {
+  display: block;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 9.5px;
+}
+
+.defissues__item code {
+  font-family: inherit;
+  background: var(--paper);
+  padding: 1px 4px;
+  border-radius: 3px;
+}

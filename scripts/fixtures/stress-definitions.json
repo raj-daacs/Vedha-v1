@@ -1,0 +1,155 @@
+{
+  "_comment": [
+    "STRESS FIXTURE \u2014 not a real business model. Run with: npm run check:definitions",
+    "",
+    "Every way a replaced definitions file has been seen to differ from the one the app",
+    "was authored against, in one payload:",
+    "",
+    "  acquisition   8 lifecycle steps against a 7-value reach profile (resampled), and",
+    "                5 segment values against 3 figures (resampled). Renamed dimension:",
+    "                'segment' where the fixtures ask for 'ICP/segment' first.",
+    "  retention     funnel: null where a lifecycle used to be.",
+    "  partnerships  a workflow the recipe catalog has never heard of. Its definitions",
+    "                load, but nothing can route to it \u2014 eligibility comes from",
+    "                WORKFLOWS in recipes.ts, and that is where it would have to be",
+    "                added. Reported as a warning, not dropped.",
+    "  broken        no goal.metric, and dimensions is a string. Dropped with an error.",
+    "  alsobroken    not an object at all. Dropped with an error.",
+    "  (absent)      P&L, Revenue engine, Cost & Burn, Activation, Expansion and",
+    "                Monetisation are all gone. Every one of them is still routable, so",
+    "                each must fall back to the carried table in semanticModel.ts and",
+    "                still render \u2014 that fallback is the main thing this fixture proves.",
+    "",
+    "EXPECTED RESULT: 2 parse errors (the two dropped entries) and 1 warning",
+    "(partnerships), with every catalog workflow still yielding usable semantics. The",
+    "check INVERTS on the errors: zero errors is a FAILURE, because it would mean the",
+    "normaliser stopped noticing. If this file ever throws instead of reporting, the",
+    "tolerance in data/ has regressed."
+  ],
+  "acquisition": {
+    "goal": {
+      "metric": "Qualified Logos",
+      "owner": "Growth",
+      "cadence": "daily",
+      "analysis_type": "DCG: funnel"
+    },
+    "drivers": [
+      "Signups",
+      "Qualify Rate"
+    ],
+    "inputs": [
+      {
+        "metric": "Clicks"
+      }
+    ],
+    "guardrails": [],
+    "funnel": [
+      "ad",
+      "click",
+      "landing",
+      "form-open",
+      "form-submit",
+      "verify",
+      "trial",
+      "qualified"
+    ],
+    "dimensions": [
+      {
+        "name": "segment",
+        "values": [
+          "enterprise",
+          "mid_market",
+          "smb",
+          "startup",
+          "public_sector"
+        ]
+      },
+      {
+        "name": "channel",
+        "values": [
+          "paid",
+          "organic"
+        ]
+      }
+    ]
+  },
+  "retention": {
+    "goal": {
+      "metric": "Gross Revenue Retention",
+      "owner": "CSM",
+      "cadence": "monthly",
+      "analysis_type": "DCG: decay + cohort"
+    },
+    "drivers": [
+      {
+        "metric": "Churn Rate"
+      }
+    ],
+    "inputs": [
+      {
+        "metric": "Active Days"
+      }
+    ],
+    "guardrails": [
+      {
+        "metric": "Cost-to-Serve"
+      }
+    ],
+    "funnel": null,
+    "journey_note": "no lifecycle in this cut",
+    "dimensions": [
+      {
+        "name": "cohort",
+        "values": [
+          "weekly",
+          "monthly"
+        ]
+      }
+    ]
+  },
+  "partnerships": {
+    "goal": {
+      "metric": "Partner-Sourced ARR",
+      "owner": "BD",
+      "cadence": "quarterly",
+      "analysis_type": "DCG: bridge"
+    },
+    "drivers": [
+      {
+        "metric": "Partner Deal Count"
+      }
+    ],
+    "inputs": [
+      {
+        "metric": "Partner Leads"
+      }
+    ],
+    "guardrails": [
+      {
+        "metric": "Partner Margin"
+      }
+    ],
+    "funnel": [
+      "referred",
+      "accepted",
+      "closed"
+    ],
+    "dimensions": [
+      {
+        "name": "partner_tier",
+        "values": [
+          "platinum",
+          "gold",
+          "silver"
+        ]
+      }
+    ]
+  },
+  "broken": {
+    "goal": {
+      "owner": "nobody"
+    },
+    "dimensions": "not a list"
+  },
+  "alsobroken": 42
+}

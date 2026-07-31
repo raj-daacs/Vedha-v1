@@ -33,6 +33,21 @@
 // render.
 // ---------------------------------------------------------------------------
 
+// THE REGISTRY IS LOADED BEFORE ANYTHING ELSE, AND THIS IMPORT MUST STAY FIRST.
+//
+// The semantic model reads the business definitions out of the registry, and the
+// registry throws rather than serving an empty model before it is loaded (see
+// `data/definitionRegistry.ts`). In the browser `main.tsx` fetches the file and only
+// then imports the app; here there is no fetch, so the bundled copy is loaded.
+//
+// IT HAS TO BE A SIDE-EFFECT IMPORT, not a call in this file's body. ES imports are
+// hoisted above every statement, so `initFromBundled()` written here — even on the
+// first line — would run AFTER all the imports below had already evaluated, which is
+// too late for anything that computes at import time. Module evaluation follows
+// import order, so a bare import that does the loading is the only construct that
+// runs early enough.
+import './bootDefinitions'
+
 import { deriveSpine, judgedAgainstBenchmark, subjectOf } from '../src/compose/composePlan'
 import type { Picks } from '../src/data/resolve'
 import { resolve } from '../src/data/resolve'

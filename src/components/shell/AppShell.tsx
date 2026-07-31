@@ -14,6 +14,7 @@ import { InsightView } from '../view/InsightView'
 import { useComposition } from '../../compose/useComposition'
 import { useApp } from '../../state/AppContext'
 import { ContextBar } from './ContextBar'
+import { DefinitionIssues } from './DefinitionIssues'
 import { LeftRail } from './LeftRail'
 
 /** Rail destinations with no surface yet. Each line goes away as its screen lands. */
@@ -59,6 +60,10 @@ export function AppShell() {
           <Screen />
         )}
       </main>
+
+      {/* Dev-only, and last in the DOM so it sits above the stage without the stage
+          needing to know about it. Renders nothing when a fetched file loaded clean. */}
+      <DefinitionIssues />
     </div>
   )
 }

@@ -96,13 +96,58 @@ is enforceable and enforced — see [Family-blindness](#family-blindness-the-cor
 | `resolve.ts` | `resolve(picks, text) → ResolvedQuery`. Stage A. The four precedence rules. |
 | `textScoring.ts` | How much a piece of text looks like a request for a given shape. The scoring model, with published weights. |
 | `scope.ts` | What a picker needs and the schema doesn't provide: option arrays and display labels. |
-| `semanticModel.ts` | What Vedha "already knows": per-workflow goal metric, measures, dimensions, states, benchmarks, focus members. Plus the semantic-loading seam. |
+| `semanticModel.ts` | What Vedha "already knows": per-workflow goal metric, measures, dimensions, states, benchmarks, focus members. **Derived from the business definitions file** — see below. |
+| `definitionSchema.ts` | The shape of the business model, and a normaliser that **accepts anything**. Returns a usable model plus a list of everything it had to assume, repair or discard. |
+| `definitionRegistry.ts` | The one place the loaded business model lives. Fetched at boot, with the bundled copy as fallback. |
+| `workflowDefinitions.json` | **Owned by the business team.** The goal metric, measure tiers, dimensions and values, and lifecycle steps for each workflow. |
 | `viewFixtures.ts` | The illustrative content behind the rendered views and the deepen answers. |
 
 > **`recipe_schema.ts` and `recipes.ts` are replaced wholesale on every drop from
 > eng.** Don't edit them to add prototype conveniences — that's what `scope.ts` and
 > `resolve.ts` are for. `resolve.ts`'s `BARE_PERIOD_CUES` is an example: a documented
 > supplement living outside the files that get overwritten.
+>
+> **`workflowDefinitions.json` is replaced wholesale by the business team**, for the
+> same reason and with a different owner. Nothing in `src/` may assume it is the file
+> the code was written against — see the next section.
+
+### The business definitions file
+
+`workflowDefinitions.json` is the source of record for **what each workflow measures**.
+The recipe catalog stays the source of record for **where a workflow sits and which
+shapes it can produce**. Two owners, two files, one direction of flow:
+
+```
+workflowDefinitions.json  →  semanticsFor()  →  WorkflowSemantics  →  composers
+   (business team)            (derivation)       (the derived view)
+```
+
+`WorkflowSemantics` is unchanged from when it was a static table, so `composePlan`,
+`composeView`, `resolve` and `textScoring` never learn that a file exists.
+
+**It is swappable at runtime.** `main.tsx` fetches `public/workflows.json` before it
+imports the app, so replacing that file on a built site and hard-refreshing runs the
+prototype on a new business model with no rebuild. The copy at
+`src/data/workflowDefinitions.json` is the fallback for when the fetch can't happen.
+
+**Nothing in the data layer throws on bad data.** `normaliseDefinitions` accepts
+anything and reports what it had to assume; every lookup has a stated fallback. A
+prototype that white-screens on a data edit is worse than useless to the person doing
+the editing. The dev-only banner in the bottom-left corner is that report — it names
+which file is live and lists every assumption. **Run `npm run check:definitions -- your-file.json`
+before dropping a new file in.**
+
+Three things the JSON does *not* decide, each for a stated reason:
+
+| not from the file | why | where it lives |
+|---|---|---|
+| altitude | the catalog already carries `level`, and eligibility depends on it. A second source would drift. | `recipes.ts` |
+| `balance` / `states` / `benchmarks` | the file has no field for them, and a benchmark's **threshold** is what makes it a bar to judge against. Inventing one would put a made-up number beside real ones. | `CARRIED` in `semanticModel.ts` |
+| a workflow the file omits | `Cost & Burn` is routable and undeclared. `CARRIED` stands in whole so picking it still renders. | `CARRIED` in `semanticModel.ts` |
+
+`ROUTABLE_WORKFLOWS` in `definitionSchema.ts` duplicates the catalog's names as bare
+strings, because the data layer must not import the recipe layer. Duplicated constants
+rot, so `check:definitions` asserts the two still agree.
 
 **2 · `src/compose/` — the composers.** Turn a recipe plus context into display
 models. Pure functions; same inputs always give the same model. `useComposition()` is
@@ -448,8 +493,11 @@ NRR, where 100% is *held* rather than average). Periods that haven't happened ye
 
 **Illustrative** — plausible numbers standing in for a data layer:
 
-- Everything in `semanticModel.ts` and `viewFixtures.ts`. The `P&L`, `Revenue engine`
-  and `Cost & Burn` semantics were invented for this prototype.
+- Everything in `viewFixtures.ts`, and the `balance` / `states` / `benchmarks` in
+  `semanticModel.ts`'s `CARRIED` table. `Cost & Burn` is invented outright — it is the
+  one routable workflow the business file doesn't declare.
+- **Not** the goal metrics, measure tiers, dimensions or lifecycle steps. Those come
+  from `workflowDefinitions.json`, which the business team wrote about their own model.
 - All deepen answers. The real dialogue is a later skill; this builds the container.
 - The confidence stamps say "from your data", but there is no data.
 
@@ -457,9 +505,21 @@ NRR, where 100% is *held* rather than average). Periods that haven't happened ye
 
 ## Known scope edges
 
-**Semantic loading is stubbed.** `loadSemanticsFor(workflow)` returns the static table
-synchronously. The seam is placed on *workflow pick* rather than on plan composition,
-so when eng wires the real fill, nothing downstream has to learn to wait.
+**Semantic loading is wired, but to a file rather than to a warehouse.**
+`semanticsFor(workflow)` derives from the loaded business definitions and stays
+synchronous. The fetch moved *up*, to `main.tsx`, because the file is one document
+describing the whole business — reading it once at boot beats eight per-workflow round
+trips for one payload. `loadSemanticsFor` survives as a pass-through for the day the
+real product does fetch per workflow.
+
+**The lifecycle fork is parsed and not shown.** Activation declares two motions —
+`self-serve · PLG` and `sales-led · CS-guided`, the second marked `assumption: true` —
+and only the first reaches the funnel. The banner reports it. Rendering the fork, with
+the assumed path marked as unobserved, is the obvious next move.
+
+**`journey_note` is parsed and not shown.** `P&L` and `Monetisation` each carry one, and
+they are exactly the two workflows with no funnel — so the note is the answer to "why is
+there no funnel here", currently going unread.
 
 **Seven of the ten workflow·recipe pairs are plan-deep** — they compose a real plan and
 then show an honest "the rendered view is rolling out" placeholder. Nothing lists them;
