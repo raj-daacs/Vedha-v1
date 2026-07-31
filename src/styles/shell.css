@@ -9,18 +9,96 @@
   min-height: var(--app-min-h);
   overflow: hidden;
   background: var(--cream);
+  /* The rail is taken out of flow so expanding it can't reflow the stage. The
+     padding reserves the collapsed strip's width in its place, permanently. */
+  position: relative;
+  padding-left: var(--rail-w-collapsed);
 }
 
 /* ---- The rail ----------------------------------------------------------- */
 
 .rail {
-  width: var(--rail-w);
-  flex: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 40;
+  width: var(--rail-w-collapsed);
   background: var(--paper);
   border-right: 1px solid var(--hairline);
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 24px 12px;
+  overflow: hidden;
+  transition: width 0.18s ease, box-shadow 0.18s ease;
+}
+
+.rail--open {
+  width: var(--rail-w);
+  padding-inline: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Everything that isn't an icon. Collapsed, the strip is too narrow to hold text,
+   so labels are removed from layout rather than clipped — a clipped word reads as
+   a rendering fault, an absent one reads as a state. */
+.rail:not(.rail--open) .rail__label,
+.rail:not(.rail--open) .rail__eyebrow,
+.rail:not(.rail--open) .rail__saved {
+  display: none;
+}
+
+/* Collapsed, each row centres its icon in the strip. */
+.rail:not(.rail--open) .rail__item,
+.rail:not(.rail--open) .rail__wordmark,
+.rail:not(.rail--open) .rail__you {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+  margin-inline: 0;
+}
+
+.rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+/* Collapsed, the mark and the toggle would fight for one 40px row. The mark is
+   the one that can go — the toggle is the only way back out of this state. */
+.rail:not(.rail--open) .rail__head {
+  justify-content: center;
+}
+
+.rail:not(.rail--open) .rail__wordmark {
+  display: none;
+}
+
+.rail__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: background-color 0.14s, color 0.14s;
+}
+
+.rail__toggle:hover {
+  background: rgba(31, 30, 28, 0.035);
+  color: var(--ink-muted);
+}
+
+.rail__toggle:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 1px;
 }
 
 .rail__wordmark {
@@ -30,7 +108,8 @@
   font-family: var(--font-display);
   font-size: 25px;
   color: var(--teal-deep);
-  margin: 2px 6px 30px;
+  margin: 2px 0 2px 6px;
+  white-space: nowrap;
 }
 
 .rail__mark {
@@ -54,6 +133,7 @@
   font-size: 14.5px;
   width: 100%;
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color 0.14s, color 0.14s;
 }
@@ -235,10 +315,11 @@
    --------------------------------------------------------------------------- */
 .defissues {
   position: fixed;
-  left: calc(var(--rail-w) + 14px);
+  left: calc(var(--rail-w-collapsed) + 14px);
   bottom: 14px;
   z-index: 30;
-  max-width: min(520px, calc(100vw - var(--rail-w) - 28px));
+  max-width: min(520px, calc(100vw - var(--rail-w-collapsed) - 28px));
+  transition: left 0.18s ease;
   border-radius: var(--r-sm);
   border: 1px solid var(--hairline);
   background: var(--white);
@@ -330,4 +411,12 @@
   background: var(--paper);
   padding: 1px 4px;
   border-radius: 3px;
+}
+
+/* The expanded rail overlays the stage, and this chip sits at the collapsed
+   width — it would end up underneath. Step it aside for as long as the rail
+   is open. The rail precedes it in the DOM, so a sibling selector reaches it. */
+.rail--open ~ .defissues {
+  left: calc(var(--rail-w) + 14px);
+  max-width: min(520px, calc(100vw - var(--rail-w) - 28px));
 }

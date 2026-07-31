@@ -45,7 +45,13 @@ export function BuildScreen() {
             line that said nearly the same thing — but couldn't say what it assumed. */}
         <ResolutionLine segments={build.resolution} notes={build.notes} />
 
-        <StepList steps={build.steps} activeIndex={state.buildStep} />
+        {/* Foldable only once the plan below is on screen — while the trace is still
+            resolving it is the whole content of the screen, so it stays open. */}
+        <StepList
+          steps={build.steps}
+          activeIndex={state.buildStep}
+          collapsible={state.planRevealed}
+        />
 
         {/* Kept mounted and faded in, so the page doesn't jump when it arrives. */}
         <div className={`plan-reveal${state.planRevealed ? ' plan-reveal--shown' : ''}`}>

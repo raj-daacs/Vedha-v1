@@ -91,7 +91,8 @@
   --shadow-modal: 0 24px 70px rgba(0, 0, 0, 0.22);
 
   /* ---- Layout ----------------------------------------------------------- */
-  --rail-w: 236px;               /* the left rail — fixed, never collapses */
+  --rail-w: 236px;               /* the left rail, expanded — the design source's width */
+  --rail-w-collapsed: 64px;      /* icon-only strip; the width the shell always reserves */
   --stage-max: 860px;            /* the Entry / thread column */
   --panel-w: 400px;              /* the deepen panel */
 

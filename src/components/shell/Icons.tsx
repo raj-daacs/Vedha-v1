@@ -38,6 +38,25 @@ export function PlusIcon(props: IconProps) {
   )
 }
 
+/** Disclosure caret. Points right when shut, rotated down by CSS when open. */
+export function ChevronIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 6l6 6-6 6" />
+    </Icon>
+  )
+}
+
+/** The rail's collapse/expand affordance. Not in the design source — the source
+    has no collapsed state, so this is the one icon drawn to match rather than copy. */
+export function PanelIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 5h18v14H3zM9 5v14" />
+    </Icon>
+  )
+}
+
 export function ListIcon(props: IconProps) {
   return (
     <Icon {...props}>

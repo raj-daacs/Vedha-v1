@@ -70,6 +70,12 @@
   margin-bottom: 18px;
 }
 
+/* Folded, the panel is one line — the generous padding it needs as a block of
+   content would read as an empty box. */
+.scope--folded {
+  padding: 6px 12px;
+}
+
 .scope__label {
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -77,6 +83,53 @@
   text-transform: uppercase;
   color: var(--ink-faint);
   margin-bottom: 11px;
+}
+
+/* The label was already the panel's heading; as a button it keeps that exact
+   type and colour so folding adds an affordance without adding a new style.
+   Deliberately sets no font/colour/letter-spacing of its own — `.scope__label`
+   rides on the same element and its eyebrow type has to survive. A `font: inherit`
+   button reset here is what broke it once; it wins on source order. */
+.scope__toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scope--folded .scope__toggle {
+  margin-bottom: 0;
+}
+
+.scope__toggle:hover {
+  color: var(--ink-muted);
+}
+
+.scope__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-sm);
+}
+
+.scope__caret {
+  display: flex;
+  transition: transform 0.16s ease;
+}
+
+.scope__caret--open {
+  transform: rotate(90deg);
+}
+
+.scope__summary {
+  margin-left: auto;
+  color: var(--accent-ink);
+  text-transform: none;
+  letter-spacing: 0.2px;
 }
 
 .scope__facet {
