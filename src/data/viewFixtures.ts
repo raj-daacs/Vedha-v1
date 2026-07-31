@@ -973,6 +973,208 @@ const COST_BURN_SCORECARD: ViewFixture = {
 }
 
 // ===========================================================================
+// FUNCTIONAL · Monetisation — price_sensitivity, the response family
+//
+// The third family's only view. Its shape is different in kind from the other two:
+// a flow reports what happened, a state reports where things sit, and this one asks
+// what a lever would do if you pulled it. Hence the two atoms nothing else uses —
+// a curve of an outcome against a lever, and a card that states a call.
+//
+// The revenue curve is GENERATED from an elasticity assumption rather than typed
+// point by point, so its peak is a real consequence of the model instead of a number
+// someone chose and then drew a hump around. Change the elasticity and the peak
+// moves; the recommendation follows it, because everything below reads the peak off
+// the curve rather than restating it.
+// ===========================================================================
+
+const CURRENT_PRICE = 40
+const SEATS_AT_CURRENT = 49_000
+
+/**
+ * Seats retained at a given price. Demand softens gently while buyers absorb a rise,
+ * then falls away past the willingness-to-pay knee faster than the extra list price
+ * makes up for — which is what puts a PEAK in the revenue curve instead of a line
+ * that climbs forever.
+ *
+ * Illustrative and deliberately simple: a stand-in for the elasticity the semantic
+ * layer will supply, not a model anyone should trust. What matters is that the curve
+ * is GENERATED rather than drawn, so its peak is a consequence of the assumption and
+ * every figure downstream reads off it.
+ */
+const WTP_KNEE = 54
+function seatsAt(price: number): number {
+  const gentle = 0.009 // below the knee, buyers mostly absorb the rise
+  const steep = 0.055 // past it, they start leaving
+  const belowKnee = Math.max(Math.min(price, WTP_KNEE) - CURRENT_PRICE, 0)
+  const aboveKnee = Math.max(price - WTP_KNEE, 0)
+  return Math.max(SEATS_AT_CURRENT * (1 - gentle * belowKnee - steep * aboveKnee), 0)
+}
+
+/**
+ * Monthly revenue in $M at each candidate price.
+ *
+ * Stops at $64 rather than running further: past there the model's seat count clamps
+ * at zero and the curve would drop flat onto the axis, which reads as a rendering
+ * fault rather than as a forecast. The shape only has to carry far enough past the
+ * peak to show that it IS a peak.
+ */
+const PRICE_CURVE = Array.from({ length: 10 }, (_, i) => {
+  const price = 28 + i * 4 // $28 → $64
+  return { price, revenue: Math.round((price * seatsAt(price)) / 1000) / 1000 }
+})
+
+const priceePeak = PRICE_CURVE.reduce((best, p) => (p.revenue > best.revenue ? p : best))
+const priceNow = PRICE_CURVE.reduce((closest, p) =>
+  Math.abs(p.price - CURRENT_PRICE) < Math.abs(closest.price - CURRENT_PRICE) ? p : closest,
+)
+/** The upside IS the gap between the two markers — computed, never asserted. */
+const priceUplift = Math.round((priceePeak.revenue - priceNow.revenue) * 1000) / 1000
+const priceRisePct = Math.round(((priceePeak.price - priceNow.price) / priceNow.price) * 100)
+const seatsLost = Math.round(seatsAt(priceNow.price) - seatsAt(priceePeak.price))
+/** Churn risk, in points, from the seats the rise gives up. */
+const churnRiskPts = Math.round((seatsLost / SEATS_AT_CURRENT) * 1000) / 10
+
+const mRev = (value: number) => `$${value.toFixed(2)}M`
+const ARPA_NOW = 412
+const LIST_PRICE = 49
+const REALISATION = Math.round((CURRENT_PRICE / LIST_PRICE) * 100)
+
+const MONETISATION_PRICE: ViewFixture = {
+  subtitle: 'what the Business tier price is worth moving',
+  meta: `Monetisation workflow · price response · ${PRICE_CURVE.length} candidate points`,
+  beats: {
+    ps_stand: {
+      subtitle: 'ARPU & price realisation · what is actually being charged',
+      headline: {
+        value: `$${ARPA_NOW}`,
+        delta: { text: `▼ ${100 - REALISATION}% below list`, tone: 'bad' },
+        note: `realising $${CURRENT_PRICE} of a $${LIST_PRICE} list price`,
+      },
+      panels: [
+        {
+          atom: 'scorecard',
+          data: {
+            groups: [
+              {
+                label: 'Levels',
+                tiles: [
+                  { value: `$${ARPA_NOW}`, label: 'ARPA / mo', delta: { text: '2%', direction: 'up' } },
+                  { value: `$${CURRENT_PRICE}`, label: 'Business tier · realised' },
+                  { value: `${(SEATS_AT_CURRENT / 1000).toFixed(1)}k`, label: 'Seats on the tier' },
+                ],
+              },
+              {
+                label: 'Realisation vs list',
+                tiles: [
+                  {
+                    value: `${REALISATION}%`,
+                    label: 'Price realisation',
+                    benchmark: { text: 'below the 90% target', clears: REALISATION >= 90 },
+                    emphasis: true,
+                  },
+                  { value: '11%', label: 'Average discount depth' },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      takeaway: `The Business tier lists at $${LIST_PRICE} and realises $${CURRENT_PRICE} — ${REALISATION}% realisation, against a 90% target. Before asking whether to raise the list price, note that ${100 - REALISATION}% of the current one is already being discounted away.`,
+    },
+
+    // ONE CURVE. The shape answers "why revenue responds this way" and every point on
+    // it answers "what would that move yield" — the same chart, annotated, not two.
+    ps_curve: {
+      subtitle: `Revenue at each candidate price · now $${CURRENT_PRICE}, revenue-max $${priceePeak.price}`,
+      panels: [
+        {
+          atom: 'responseCurve',
+          label: 'Revenue response to price',
+          data: {
+            curve: PRICE_CURVE,
+            currentPrice: CURRENT_PRICE,
+            yTicks: [2.4, 2.0, 1.6, 1.2],
+            prefix: '$',
+            xAxisLabel: 'price / seat →',
+            yAxisLabel: 'revenue / mo',
+            riskNote: 'churn risk ↑',
+          },
+        },
+      ],
+      takeaway: `Revenue peaks at $${priceePeak.price}, ${priceRisePct}% above today's $${priceNow.price} — worth ${mRev(priceUplift)} a month. Past the peak each extra dollar of list price costs more in churn than it earns, which is the shaded region: the curve is not an argument for pricing as high as possible.`,
+    },
+
+    // THE CALL. The response family's native output, and the only place in the app
+    // that recommends rather than reports.
+    ps_do: {
+      subtitle: 'The move, its expected effect, and what it costs',
+      panels: [
+        {
+          atom: 'recommendation',
+          data: {
+            move: `Raise Business tier $${priceNow.price} → $${priceePeak.price}`,
+            deltaRevenue: `+${mRev(priceUplift)} / mo`,
+            riskLabel: 'Churn risk',
+            riskValue: `+${churnRiskPts.toFixed(1)} pts`,
+            // Always directional — see RecommendationData.confidence, and section H.
+            confidence: 'directional',
+            note: 'at the rev-max',
+          },
+        },
+      ],
+      takeaway: `Move to $${priceePeak.price} and expect ${mRev(priceUplift)} a month more, giving up roughly ${seatsLost.toLocaleString()} seats — about ${churnRiskPts.toFixed(1)} points of churn. Directional: it assumes the elasticity holds, and the ${100 - REALISATION}% already lost to discounting says the realised price is the easier lever to pull first.`,
+    },
+  },
+
+  deepen: {
+    root: {
+      scopeLabel: 'deepen · whole view',
+      title: 'Ask about this view',
+      body: [
+        'Ask across the whole view, or select a section to scope the question to it.',
+        'A price question has three levels: what is charged now, what the curve says a change would do, and whether to make the move. The three sections are those three.',
+      ],
+    },
+    ps_stand: {
+      scopeLabel: 'deepen · realisation',
+      title: 'What is actually being charged — deeper',
+      body: [
+        `List $${LIST_PRICE}, realised $${CURRENT_PRICE} — ${REALISATION}% realisation across ${(SEATS_AT_CURRENT / 1000).toFixed(1)}k seats.`,
+        'Realisation and list price are different levers with different costs. Raising list risks churn on every account; recovering discount risks it only on the accounts actually discounted, which is a much smaller blast radius.',
+      ],
+      promotedSection: {
+        question: 'Is the cheaper move to raise list or to discount less?',
+        takeaway: `Discount less. Closing half the ${100 - REALISATION}-point realisation gap is worth roughly ${mRev(Math.round(((LIST_PRICE - CURRENT_PRICE) / 2) * SEATS_AT_CURRENT / 1000) / 1000)} a month without changing the list price at all — and it touches only discounted accounts.`,
+      },
+    },
+    ps_curve: {
+      scopeLabel: 'deepen · the response',
+      title: 'How revenue responds to price — deeper',
+      body: [
+        `The peak is $${priceePeak.price} at ${mRev(priceePeak.revenue)} a month, against ${mRev(priceNow.revenue)} today.`,
+        `The curve bends where willingness to pay runs out, around $${WTP_KNEE}. Below that buyers mostly absorb a rise; above it they leave fast enough that revenue falls away rather than flattening. The peak sits just under that knee, which is what makes it a peak at all.`,
+      ],
+      promotedSection: {
+        question: 'How much of the upside comes before the knee?',
+        takeaway: `All of it. The peak at $${priceePeak.price} is below the $${WTP_KNEE} knee, so the whole gain comes from the gentle part of the demand curve. Past $${WTP_KNEE} revenue does not merely grow more slowly — it falls.`,
+      },
+    },
+    ps_do: {
+      scopeLabel: 'deepen · the recommendation',
+      title: 'The recommended move — deeper',
+      body: [
+        `$${priceNow.price} → $${priceePeak.price} for ${mRev(priceUplift)} a month, at about ${churnRiskPts.toFixed(1)} points of churn.`,
+        'This is the weakest claim in the view and is stamped accordingly. It rests on an elasticity nobody has tested at this price, so the honest reading is a direction to try rather than a number to commit to a plan.',
+      ],
+      promotedSection: {
+        question: 'What would make this recommendation safe to act on?',
+        takeaway: `A test at one price point between $${priceNow.price} and $${priceePeak.price}, on a cohort large enough to measure churn. The curve is directional until a real price has been charged against it.`,
+      },
+    },
+  },
+}
+
+// ===========================================================================
 // The registry
 // ===========================================================================
 
@@ -994,4 +1196,7 @@ export const VIEW_FIXTURES: Record<string, ViewFixture> = {
 
   // The scorecard's second home — no new atom. See the fixture's note.
   'Cost & Burn:state_scorecard': COST_BURN_SCORECARD,
+
+  // The response family's only view, and the last plan-deep pair to land.
+  'Monetisation:price_sensitivity': MONETISATION_PRICE,
 }

@@ -107,13 +107,14 @@ export const RECIPES: RecipeBook = [
       intent_signals: ['price', 'pricing', 'elasticity', 'willingness to pay', 'wtp', 'discount', 'raise price', 'packaging'],
     },
     beats: [
-      { id: 'ps_stand', category: 'stand', question: 'Where ARPU & price realisation stand', reads: ['ARPU', 'list price', 'realized price'], builds: 'price scorecard', atoms: ['Scorecard'], confidence: 'from_data' },
-      { id: 'ps_why', category: 'why', question: 'How does revenue respond to price?', reads: ['elasticity', 'WTP'], builds: 'response / elasticity curve', atoms: ['ResponseCurve'], confidence: 'directional' },
-      { id: 'ps_ahead', category: 'ahead', question: 'Revenue at candidate price points', reads: ['response curve'], builds: 'projection at price points', atoms: ['ResponseCurve'], confidence: 'directional' },
-      { id: 'ps_do', category: 'do', question: 'Recommended move + expected Δrevenue, churn risk', reads: ['optimum', 'constraint'], builds: 'recommendation', atoms: ['Recommendation'], confidence: 'directional' },
+      { id: 'ps_stand', category: 'stand', question: 'Where ARPU & price realisation stand', reads: ['ARPU', 'list price', 'realized price'], builds: 'price scorecard vs benchmark', atoms: ['Scorecard'], confidence: 'from_data' },
+      // why + ahead FUSE onto one curve: the shape (why) and the candidate price points (ahead) are one chart, annotated — not two renders of the same curve.
+      { id: 'ps_curve', category: 'why', question: 'How does revenue respond to price, and what would each move yield?', reads: ['elasticity', 'WTP', 'candidate price points'], builds: 'response curve with current price, revenue-max, and candidate points marked', atoms: ['ResponseCurve'], confidence: 'directional' },
+      // the do-beat is the response family's signature: a stated CALL, not a reading.
+      { id: 'ps_do', category: 'do', question: 'Recommended move + expected Δrevenue, churn risk', reads: ['optimum', 'constraint'], builds: 'recommendation card', atoms: ['Recommendation'], confidence: 'directional' },
     ],
     four_question_fit: 'extend',
-    narration_note: 'Questions extend toward "what do we do" — the recommendation is the native output.',
+    narration_note: 'The response curve fuses "why" (the shape) and "ahead" (candidate price points) onto one annotated chart — render it ONCE. The family extends toward "do": the recommendation is a stated call, the native output.',
     producibility: 'needs_atom',
     requires: ['CF-10'],
   },

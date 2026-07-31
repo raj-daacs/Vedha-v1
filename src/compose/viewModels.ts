@@ -135,6 +135,54 @@ export interface BridgeData {
   suffix?: string
 }
 
+/**
+ * Revenue as a function of price — the response family's signature shape.
+ *
+ * No flow or state atom does this: it plots an OUTCOME AGAINST A LEVER rather than
+ * against time or against a benchmark. The reading is the gap between where the price
+ * is now and where revenue peaks, so those two markers are the chart.
+ *
+ * FUSES the "why" and the "ahead": the curve's shape is why revenue responds the way
+ * it does, and any point along it is what a candidate move would yield. One render,
+ * annotated — not the same curve drawn twice with different captions.
+ */
+export interface ResponseCurveData {
+  curve: Array<{ price: number; revenue: number }>
+  /** Where the price sits today. Not derivable — it's a fact about the business. */
+  currentPrice: number
+  yTicks: number[]
+  /** Prefix for price and revenue labels — "$". */
+  prefix?: string
+  xAxisLabel?: string
+  yAxisLabel?: string
+  /** Sits in the shaded region past the peak. "churn risk ↑" */
+  riskNote?: string
+}
+
+/**
+ * The do-beat: a stated CALL, not a reading. The only atom in the app that recommends
+ * rather than reports, which is what "extend toward what-do-we-do" looks like drawn.
+ *
+ * Not a chart — a decision card. Everything is pre-formatted display strings, because
+ * a recommendation is prose with figures in it rather than a series to scale.
+ */
+export interface RecommendationData {
+  /** "Raise Business tier $40 → $52" — set in the display serif. */
+  move: string
+  deltaRevenue: string
+  riskLabel: string
+  riskValue: string
+  /**
+   * ALWAYS "directional" for a recommendation. A stated call about a price that hasn't
+   * been charged yet cannot be from data, and saying otherwise would be the single
+   * most misleading thing this app could do. Asserted for every fixture in
+   * `check:recipes` rather than hardcoded here, so the field stays honest AND visible.
+   */
+  confidence: string
+  /** A short aside beside the tiles — "at the rev-max". */
+  note?: string
+}
+
 export interface CohortMatrixData {
   /** One row per cohort. `null` = that period hasn't happened yet for this cohort. */
   rows: Array<{ label: string; values: Array<number | null> }>
@@ -166,6 +214,8 @@ export type PanelSpec =
   | { atom: 'stickinessTrend'; label?: string; data: StickinessTrendData }
   | { atom: 'nrrCurve'; label?: string; data: NrrCurveData }
   | { atom: 'bridge'; label?: string; data: BridgeData }
+  | { atom: 'responseCurve'; label?: string; data: ResponseCurveData }
+  | { atom: 'recommendation'; label?: string; data: RecommendationData }
 
 export interface LegendItem {
   /** A colour swatch, or 'unobserved' for the dashed outline. */

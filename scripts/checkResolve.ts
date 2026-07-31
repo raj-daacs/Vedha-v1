@@ -22,6 +22,8 @@
 //   E  · displayLabel honesty, checked through subjectOf rather than structurally.
 //   F  · View fixtures address real beats.
 //   G  · Every bridge reconciles: opening + Σ deltas === closing.
+//   H  · The response atoms: one curve per view, marker on the axis, and a
+//        recommendation always stamped directional.
 //
 // NOTE ON "NO MATCH". The old table had `expect: null` cases — asks the matcher
 // should refuse. The resolver has no such answer: the operator always has a scope,
@@ -522,12 +524,79 @@ for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
 
 // ===========================================================================
 
+// ===========================================================================
+// H · The response family's two atoms
+//
+// Both make claims that are easy to break quietly, so both are asserted.
+// ===========================================================================
+
+console.log('\n=== H · the response atoms ===\n')
+
+for (const [key, fixture] of Object.entries(VIEW_FIXTURES)) {
+  const curveBeats = Object.entries(fixture.beats).filter(([, beat]) =>
+    beat.panels.some((panel) => panel.atom === 'responseCurve'),
+  )
+
+  // RENDER THE CURVE ONCE. It fuses "why" (the shape) and "ahead" (what each candidate
+  // move yields) into one annotated chart, so a second render is the same picture with
+  // a different caption — the redundancy the bridge already had to have removed.
+  if (curveBeats.length > 0) {
+    const label = `${key} — response curve on ${curveBeats.map(([id]) => id).join(', ')}`
+    if (curveBeats.length === 1) pass(label)
+    else {
+      fail(label)
+      console.log(`        ${curveBeats.length} response curves in one view; expected 1.`)
+    }
+  }
+
+  for (const [beatId, beat] of Object.entries(fixture.beats)) {
+    for (const panel of beat.panels) {
+      // THE CURRENT-PRICE MARKER MUST BE ON THE AXIS. Off the end it simply doesn't
+      // draw, and the chart would silently lose half its finding — the gap between
+      // where the price is and where revenue peaks.
+      if (panel.atom === 'responseCurve') {
+        const prices = panel.data.curve.map((p) => p.price)
+        const inRange =
+          panel.data.currentPrice >= Math.min(...prices) &&
+          panel.data.currentPrice <= Math.max(...prices)
+        const peak = panel.data.curve.reduce((b, p) => (p.revenue > b.revenue ? p : b))
+        const label =
+          `${key} · ${beatId} — now ${panel.data.currentPrice}, peak ${peak.price} ` +
+          `(axis ${Math.min(...prices)}–${Math.max(...prices)})`
+        if (inRange) pass(label)
+        else {
+          fail(label)
+          console.log('        the current-price marker falls outside the plotted range.')
+        }
+      }
+
+      // A RECOMMENDATION IS ALWAYS DIRECTIONAL. It is a call about something that
+      // hasn't happened — a price nobody has been charged. Stamping it "from data"
+      // would be the most misleading thing this app could say, and it is one careless
+      // fixture edit away, so it is enforced rather than trusted.
+      if (panel.atom === 'recommendation') {
+        const label = `${key} · ${beatId} — recommendation stamped "${panel.data.confidence}"`
+        if (panel.data.confidence === 'directional') pass(label)
+        else {
+          fail(label)
+          console.log(
+            '        a recommendation must be stamped directional — it predicts the\n' +
+              '        effect of a move nobody has made yet.',
+          )
+        }
+      }
+    }
+  }
+}
+
+// ===========================================================================
+
 const total = SPEC_CASES.length + ROUTE_CASES.length + WORKFLOWS.length * 2
 console.log(
   failures === 0
     ? `\nALL CHECKS PASS — ${SPEC_CASES.length} spec cases · ${ROUTE_CASES.length} routing · ` +
       `${WORKFLOWS.length * 2} prompt chips · ` +
-      `invariants D–G  (${total} cases)`
+      `invariants D–H  (${total} cases)`
     : `\n${failures} FAILED`,
 )
 
