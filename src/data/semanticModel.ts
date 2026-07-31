@@ -115,12 +115,20 @@ export const SEMANTICS: Record<WorkflowName, WorkflowSemantics> = {
     focusMembers: ['Enterprise', 'Business tier'],
   },
   Monetisation: {
-    goalMetric: 'ARR',
+    // ARPU = MRR ÷ active paid seats. PER SEAT, not per account — the tessera defines
+    // it that way because the lever here is the price of a seat.
+    //
+    // ARPA (revenue per account) is deliberately absent. It is a different denominator
+    // answering a different question, and nothing in Monetisation's scope drives it:
+    // the drivers below are all per-seat or per-tier. A per-account figure alongside a
+    // per-seat goal invites exactly the mismatch it caused when it was here.
+    goalMetric: 'ARPU',
     balance: 'ARR',
-    metrics: ['ARR', 'ARPA'],
+    metrics: ['ARPU', 'Price realisation', 'Tier mix premium', 'Add-on attach'],
     dimensions: ['plan', 'region'],
-    states: ['paid accounts', 'discount depth'],
-    benchmarks: ['gross margin ≥ 75%'],
+    /** Seats, because seats are the ARPU denominator. */
+    states: ['paid seats', 'discount depth'],
+    benchmarks: ['price realisation ≥ 90%'],
     focusMembers: ['Business tier', 'Enterprise tier'],
   },
 }

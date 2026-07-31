@@ -1035,20 +1035,50 @@ const seatsLost = Math.round(seatsAt(priceNow.price) - seatsAt(priceePeak.price)
 const churnRiskPts = Math.round((seatsLost / SEATS_AT_CURRENT) * 1000) / 10
 
 const mRev = (value: number) => `$${value.toFixed(2)}M`
-const ARPA_NOW = 412
 const LIST_PRICE = 49
+const REALISATION_TARGET = 90
 const REALISATION = Math.round((CURRENT_PRICE / LIST_PRICE) * 100)
+const DISCOUNT_DEPTH = 11
+
+/**
+ * ARPU = MRR ÷ active paid seats. PER SEAT.
+ *
+ * Built up from its two components rather than typed, so the headline is the sum of
+ * the tiles beneath it by construction:
+ *
+ *   realised tier price   $40.00 / seat
+ * + add-on revenue        $ 3.08 / seat   (22% attach × $14)
+ * = ARPU                  $43.08 / seat
+ *
+ * and MRR = ARPU × seats, so the definition holds rather than being asserted. Both
+ * components are Monetisation drivers in the semantic model (price realisation,
+ * add-on attach); nothing here is a per-account figure.
+ */
+const ADD_ON_ATTACH = 0.22
+const ADD_ON_PRICE = 14
+const addOnPerSeat = Math.round(ADD_ON_ATTACH * ADD_ON_PRICE * 100) / 100
+const ARPU_NOW = Math.round((CURRENT_PRICE + addOnPerSeat) * 100) / 100
+const MRR_NOW = Math.round((ARPU_NOW * SEATS_AT_CURRENT) / 1000) / 1000
+/** What closing half the realisation gap is worth — per seat, then in total. */
+const realisationGapPerSeat = Math.round(((LIST_PRICE - CURRENT_PRICE) / 2) * 100) / 100
+const realisationGapValue =
+  Math.round((realisationGapPerSeat * SEATS_AT_CURRENT) / 1000) / 1000
 
 const MONETISATION_PRICE: ViewFixture = {
   subtitle: 'what the Business tier price is worth moving',
   meta: `Monetisation workflow · price response · ${PRICE_CURVE.length} candidate points`,
   beats: {
     ps_stand: {
-      subtitle: 'ARPU & price realisation · what is actually being charged',
+      subtitle: 'ARPU & price realisation · what is actually being charged per seat',
       headline: {
-        value: `$${ARPA_NOW}`,
-        delta: { text: `▼ ${100 - REALISATION}% below list`, tone: 'bad' },
-        note: `realising $${CURRENT_PRICE} of a $${LIST_PRICE} list price`,
+        // The goal metric, per seat, matching what the beat asks about. The two tiles
+        // below sum to exactly this.
+        value: `$${ARPU_NOW.toFixed(2)}`,
+        delta: {
+          text: `▼ ${100 - REALISATION}% of list discounted away`,
+          tone: 'bad',
+        },
+        note: `ARPU · MRR ${mRev(MRR_NOW)} ÷ ${(SEATS_AT_CURRENT / 1000).toFixed(1)}k paid seats`,
       },
       panels: [
         {
@@ -1056,11 +1086,19 @@ const MONETISATION_PRICE: ViewFixture = {
           data: {
             groups: [
               {
-                label: 'Levels',
+                // Every tile is per seat or a seat count — the same denominator as the
+                // goal metric, so the group reads as one arithmetic.
+                label: 'ARPU components · per seat',
                 tiles: [
-                  { value: `$${ARPA_NOW}`, label: 'ARPA / mo', delta: { text: '2%', direction: 'up' } },
-                  { value: `$${CURRENT_PRICE}`, label: 'Business tier · realised' },
-                  { value: `${(SEATS_AT_CURRENT / 1000).toFixed(1)}k`, label: 'Seats on the tier' },
+                  { value: `$${CURRENT_PRICE.toFixed(2)}`, label: 'Realised price / seat' },
+                  {
+                    value: `$${addOnPerSeat.toFixed(2)}`,
+                    label: `Add-on revenue / seat · ${Math.round(ADD_ON_ATTACH * 100)}% attach`,
+                  },
+                  {
+                    value: `${(SEATS_AT_CURRENT / 1000).toFixed(1)}k`,
+                    label: 'Paid seats · the ARPU denominator',
+                  },
                 ],
               },
               {
@@ -1069,17 +1107,20 @@ const MONETISATION_PRICE: ViewFixture = {
                   {
                     value: `${REALISATION}%`,
                     label: 'Price realisation',
-                    benchmark: { text: 'below the 90% target', clears: REALISATION >= 90 },
+                    benchmark: {
+                      text: `below the ${REALISATION_TARGET}% target`,
+                      clears: REALISATION >= REALISATION_TARGET,
+                    },
                     emphasis: true,
                   },
-                  { value: '11%', label: 'Average discount depth' },
+                  { value: `${DISCOUNT_DEPTH}%`, label: 'Average discount depth' },
                 ],
               },
             ],
           },
         },
       ],
-      takeaway: `The Business tier lists at $${LIST_PRICE} and realises $${CURRENT_PRICE} — ${REALISATION}% realisation, against a 90% target. Before asking whether to raise the list price, note that ${100 - REALISATION}% of the current one is already being discounted away.`,
+      takeaway: `ARPU is $${ARPU_NOW.toFixed(2)} a seat — $${CURRENT_PRICE.toFixed(2)} of realised tier price plus $${addOnPerSeat.toFixed(2)} from add-ons, across ${(SEATS_AT_CURRENT / 1000).toFixed(1)}k paid seats. The tier lists at $${LIST_PRICE}, so realisation is ${REALISATION}% against the ${REALISATION_TARGET}% target: ${100 - REALISATION}% of the list price is discounted away before any question of raising it.`,
     },
 
     // ONE CURVE. The shape answers "why revenue responds this way" and every point on
@@ -1139,12 +1180,12 @@ const MONETISATION_PRICE: ViewFixture = {
       scopeLabel: 'deepen · realisation',
       title: 'What is actually being charged — deeper',
       body: [
-        `List $${LIST_PRICE}, realised $${CURRENT_PRICE} — ${REALISATION}% realisation across ${(SEATS_AT_CURRENT / 1000).toFixed(1)}k seats.`,
-        'Realisation and list price are different levers with different costs. Raising list risks churn on every account; recovering discount risks it only on the accounts actually discounted, which is a much smaller blast radius.',
+        `ARPU $${ARPU_NOW.toFixed(2)} a seat: $${CURRENT_PRICE.toFixed(2)} realised against a $${LIST_PRICE} list, plus $${addOnPerSeat.toFixed(2)} of add-on revenue, across ${(SEATS_AT_CURRENT / 1000).toFixed(1)}k paid seats.`,
+        'Realisation and list price are different levers with different costs. Raising list exposes every seat to a price rise; recovering discount touches only the seats actually discounted, which is a far smaller blast radius for the same money.',
       ],
       promotedSection: {
         question: 'Is the cheaper move to raise list or to discount less?',
-        takeaway: `Discount less. Closing half the ${100 - REALISATION}-point realisation gap is worth roughly ${mRev(Math.round(((LIST_PRICE - CURRENT_PRICE) / 2) * SEATS_AT_CURRENT / 1000) / 1000)} a month without changing the list price at all — and it touches only discounted accounts.`,
+        takeaway: `Discount less. Closing half the ${100 - REALISATION}-point realisation gap is worth $${realisationGapPerSeat.toFixed(2)} a seat — about ${mRev(realisationGapValue)} a month — without changing the list price at all, and it touches only discounted seats.`,
       },
     },
     ps_curve: {
